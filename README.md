@@ -12,9 +12,7 @@
 
 ## Installation
 
-* Download and install the latest `.whl` on [`GitHub release`](https://github.com/rathaumons/ultralytics-for-pyppbox/releases)
-
-* Or install from PyPI: 
+* Install from PyPI: 
     ```
     pip install pyppbox-ultralytics
     ``` 
@@ -32,3 +30,4 @@
     python -m build --wheel --skip-dependency-check --no-isolation
     cd dist
     ```
+  
