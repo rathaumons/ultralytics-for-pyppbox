@@ -21,7 +21,7 @@ def get_version():
 setup(
     name='pyppbox-ultralytics',  # name of pypi package
     version=get_version(),  # version of pypi package
-    python_requires='>=3.7',
+    python_requires='>=3.8',
     license='AGPL-3.0',
     description=('Ultralytics YOLOv8 for SOTA object detection, multi-object tracking, instance segmentation, '
                  'pose estimation and image classification.'),
@@ -57,7 +57,6 @@ setup(
         'Intended Audience :: Science/Research',
         'License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
