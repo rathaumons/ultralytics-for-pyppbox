@@ -13,7 +13,7 @@
 
 ## Installation
 
-* Install from PyPI: 
+* Install from [PyPI](https://pypi.org/project/pyppbox-ultralytics/):
     ```
     pip install pyppbox-ultralytics
     ``` 
