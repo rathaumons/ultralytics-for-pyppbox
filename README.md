@@ -5,7 +5,7 @@
 * Updated: **July 26, 2023**
 * Synced with: v8.0.142 -> [[9627323]](https://github.com/ultralytics/ultralytics/commit/9627323d7cb5e8107e7a471f87d471108b263451) + [[3c787eb]](3c787eb0806bab79dda88f0be9a476666118b52f)
 * All credit and info -> [[Original Ultralytics repo]](https://github.com/ultralytics/ultralytics)
-* What cutomized:
+* What customized:
     - Enable OpenCV multithreading
     - Remove restrictions on customized OpenCV
     - Disable dependency auto-install
