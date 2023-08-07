@@ -51,6 +51,7 @@ def check_imgsz(imgsz, stride=32, min_dim=1, max_dim=2, floor=0):
         imgsz (int | cList[int]): Image size.
         stride (int): Stride value.
         min_dim (int): Minimum number of dimensions.
+        max_dim (int): Maximum number of dimensions.
         floor (int): Minimum allowed value for image size.
 
     Returns:
@@ -90,36 +91,65 @@ def check_imgsz(imgsz, stride=32, min_dim=1, max_dim=2, floor=0):
 
 
 def check_version(current: str = '0.0.0',
-                  minimum: str = '0.0.0',
+                  required: str = '0.0.0',
                   name: str = 'version ',
-                  pinned: bool = False,
                   hard: bool = False,
                   verbose: bool = False) -> bool:
     """
-    Check current version against the required minimum version.
+    Check current version against the required version or range.
 
     Args:
         current (str): Current version.
-        minimum (str): Required minimum version.
+        required (str): Required version or range (in pip-style format).
         name (str): Name to be used in warning message.
-        pinned (bool): If True, versions must match exactly. If False, minimum version must be satisfied.
-        hard (bool): If True, raise an AssertionError if the minimum version is not met.
-        verbose (bool): If True, print warning message if minimum version is not met.
+        hard (bool): If True, raise an AssertionError if the requirement is not met.
+        verbose (bool): If True, print warning message if requirement is not met.
 
     Returns:
-        (bool): True if minimum version is met, False otherwise.
+        (bool): True if requirement is met, False otherwise.
+
+    Example:
+        # check if current version is exactly 22.04
+        check_version(current='22.04', required='==22.04')
+
+        # check if current version is greater than or equal to 22.04
+        check_version(current='22.10', required='22.04')  # assumes '>=' inequality if none passed
+
+        # check if current version is less than or equal to 22.04
+        check_version(current='22.04', required='<=22.04')
+
+        # check if current version is between 20.04 (inclusive) and 22.04 (exclusive)
+        check_version(current='21.10', required='>20.04,<22.04')
     """
-    current, minimum = (pkg.parse_version(x) for x in (current, minimum))
-    result = (current == minimum) if pinned else (current >= minimum)  # bool
-    warning_message = f'WARNING ⚠️ {name}{minimum} is required by YOLOv8, but {name}{current} is currently installed'
-    if hard:
-        assert result, emojis(warning_message)  # assert min requirements met
-    if verbose and not result:
-        LOGGER.warning(warning_message)
+    current = pkg.parse_version(current)
+    constraints = re.findall(r'([<>!=]{1,2}\s*\d+\.\d+)', required) or [f'>={required}']
+
+    result = True
+    for constraint in constraints:
+        op, version = re.match(r'([<>!=]{1,2})\s*(\d+\.\d+)', constraint).groups()
+        version = pkg.parse_version(version)
+        if op == '==' and current != version:
+            result = False
+        elif op == '!=' and current == version:
+            result = False
+        elif op == '>=' and not (current >= version):
+            result = False
+        elif op == '<=' and not (current <= version):
+            result = False
+        elif op == '>' and not (current > version):
+            result = False
+        elif op == '<' and not (current < version):
+            result = False
+    if not result:
+        warning_message = f'WARNING ⚠️ {name}{required} is required, but {name}{current} is currently installed'
+        if hard:
+            raise ModuleNotFoundError(emojis(warning_message))  # assert version requirements met
+        if verbose:
+            LOGGER.warning(warning_message)
     return result
 
 
-def check_latest_pypi_version(package_name='pyppbox-ultralytics'):
+def check_latest_pypi_version(package_name='ultralytics'):
     """
     Returns the latest version of a PyPI package without downloading or installing it.
 
@@ -214,6 +244,20 @@ def check_requirements(requirements=ROOT.parent / 'requirements.txt', exclude=()
         exclude (Tuple[str]): Tuple of package names to exclude from checking.
         install (bool): If True, attempt to auto-update packages that don't meet requirements.
         cmds (str): Additional commands to pass to the pip install command when auto-updating.
+
+    Example:
+        ```python
+        from ultralytics.utils.checks import check_requirements
+
+        # Check a requirements.txt file
+        check_requirements('path/to/requirements.txt')
+
+        # Check a single package
+        check_requirements('ultralytics>=8.0.0')
+
+        # Check multiple packages
+        check_requirements(['numpy', 'ultralytics>=8.0.0'])
+        ```
     """
     prefix = colorstr('red', 'bold', 'requirements:')
     check_python()  # check python version

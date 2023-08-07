@@ -19,7 +19,7 @@ PaddlePaddle            | `paddle`                  | yolov8n_paddle_model/
 ncnn                    | `ncnn`                    | yolov8n_ncnn_model/
 
 Requirements:
-    $ pip install ultralytics[export]
+    $ pip install "ultralytics[export]"
 
 Python:
     from ultralytics import YOLO
@@ -32,7 +32,7 @@ CLI:
 Inference:
     $ yolo predict model=yolov8n.pt                 # PyTorch
                          yolov8n.torchscript        # TorchScript
-                         yolov8n.onnx               # ONNX Runtime or OpenCV DNN with --dnn
+                         yolov8n.onnx               # ONNX Runtime or OpenCV DNN with dnn=True
                          yolov8n_openvino_model     # OpenVINO
                          yolov8n.engine             # TensorRT
                          yolov8n.mlmodel            # CoreML (macOS-only)
@@ -177,7 +177,7 @@ class Exporter:
         im = torch.zeros(self.args.batch, 3, *self.imgsz).to(self.device)
         file = Path(
             getattr(model, 'pt_path', None) or getattr(model, 'yaml_file', None) or model.yaml.get('yaml_file', ''))
-        if file.suffix == '.yaml':
+        if file.suffix in ('.yaml', '.yml'):
             file = Path(file.name)
 
         # Update model
@@ -214,8 +214,8 @@ class Exporter:
         self.output_shape = tuple(y.shape) if isinstance(y, torch.Tensor) else \
             tuple(tuple(x.shape if isinstance(x, torch.Tensor) else []) for x in y)
         self.pretty_name = Path(self.model.yaml.get('yaml_file', self.file)).stem.replace('yolo', 'YOLO')
-        trained_on = f'trained on {Path(self.args.data).name}' if self.args.data else '(untrained)'
-        description = f'Ultralytics {self.pretty_name} model {trained_on}'
+        data = model.args['data'] if hasattr(model, 'args') and isinstance(model.args, dict) else ''
+        description = f'Ultralytics {self.pretty_name} model {f"trained on {data}" if data else ""}'
         self.metadata = {
             'description': description,
             'author': 'Ultralytics',
@@ -269,13 +269,12 @@ class Exporter:
             s = '' if square else f"WARNING ⚠️ non-PyTorch val requires square images, 'imgsz={self.imgsz}' will not " \
                                   f"work. Use export 'imgsz={max(self.imgsz)}' if val is required."
             imgsz = self.imgsz[0] if square else str(self.imgsz)[1:-1].replace(' ', '')
-            data = f'data={self.args.data}' if model.task == 'segment' and format == 'pb' else ''
-            LOGGER.info(
-                f'\nExport complete ({time.time() - t:.1f}s)'
-                f"\nResults saved to {colorstr('bold', file.parent.resolve())}"
-                f'\nPredict:         yolo predict task={model.task} model={f} imgsz={imgsz} {data}'
-                f'\nValidate:        yolo val task={model.task} model={f} imgsz={imgsz} data={self.args.data} {s}'
-                f'\nVisualize:       https://netron.app')
+            predict_data = f'data={data}' if model.task == 'segment' and format == 'pb' else ''
+            LOGGER.info(f'\nExport complete ({time.time() - t:.1f}s)'
+                        f"\nResults saved to {colorstr('bold', file.parent.resolve())}"
+                        f'\nPredict:         yolo predict task={model.task} model={f} imgsz={imgsz} {predict_data}'
+                        f'\nValidate:        yolo val task={model.task} model={f} imgsz={imgsz} data={data} {s}'
+                        f'\nVisualize:       https://netron.app')
 
         self.run_callbacks('on_export_end')
         return f  # return list of exported files/dirs
@@ -301,7 +300,7 @@ class Exporter:
         """YOLOv8 ONNX export."""
         requirements = ['onnx>=1.12.0']
         if self.args.simplify:
-            requirements += ['onnxsim>=0.4.17', 'onnxruntime-gpu' if torch.cuda.is_available() else 'onnxruntime']
+            requirements += ['onnxsim>=0.4.33', 'onnxruntime-gpu' if torch.cuda.is_available() else 'onnxruntime']
         check_requirements(requirements)
         import onnx  # noqa
 
@@ -422,7 +421,7 @@ class Exporter:
                 f'{prefix} WARNING ⚠️ PNNX not found. Attempting to download binary file from '
                 'https://github.com/pnnx/pnnx/.\nNote PNNX Binary file must be placed in current working directory '
                 f'or in {ROOT}. See PNNX repo for full installation instructions.')
-            _, assets = get_github_assets(repo='pnnx/pnnx')
+            _, assets = get_github_assets(repo='pnnx/pnnx', retry=True)
             asset = [x for x in assets if ('macos' if MACOS else 'ubuntu' if LINUX else 'windows') in x][0]
             attempt_download_asset(asset, repo='pnnx/pnnx', release='latest')
             unzip_dir = Path(asset).with_suffix('')
@@ -572,15 +571,16 @@ class Exporter:
     @try_export
     def export_saved_model(self, prefix=colorstr('TensorFlow SavedModel:')):
         """YOLOv8 TensorFlow SavedModel export."""
+        cuda = torch.cuda.is_available()
         try:
             import tensorflow as tf  # noqa
         except ImportError:
-            cuda = torch.cuda.is_available()
             check_requirements(f"tensorflow{'-macos' if MACOS else '-aarch64' if ARM64 else '' if cuda else '-cpu'}")
             import tensorflow as tf  # noqa
-        check_requirements(('onnx', 'onnx2tf>=1.9.1', 'sng4onnx>=1.0.1', 'onnxsim>=0.4.17', 'onnx_graphsurgeon>=0.3.26',
-                            'tflite_support', 'onnxruntime-gpu' if torch.cuda.is_available() else 'onnxruntime'),
-                           cmds='--extra-index-url https://pypi.ngc.nvidia.com')
+        check_requirements(
+            ('onnx', 'onnx2tf>=1.15.4', 'sng4onnx>=1.0.1', 'onnxsim>=0.4.33', 'onnx_graphsurgeon>=0.3.26',
+             'tflite_support', 'onnxruntime-gpu' if cuda else 'onnxruntime'),
+            cmds='--extra-index-url https://pypi.ngc.nvidia.com')  # onnx_graphsurgeon only on NVIDIA
 
         LOGGER.info(f'\n{prefix} starting export with tensorflow {tf.__version__}...')
         f = Path(str(self.file).replace(self.file.suffix, '_saved_model'))
@@ -595,6 +595,7 @@ class Exporter:
         # Export to TF
         tmp_file = f / 'tmp_tflite_int8_calibration_images.npy'  # int8 calibration images file
         if self.args.int8:
+            verbosity = '--verbosity info'
             if self.args.data:
                 import numpy as np
 
@@ -603,13 +604,14 @@ class Exporter:
 
                 # Generate calibration data for integer quantization
                 LOGGER.info(f"{prefix} collecting INT8 calibration images from 'data={self.args.data}'")
-                dataset = YOLODataset(check_det_dataset(self.args.data)['val'], imgsz=self.imgsz[0], augment=False)
+                data = check_det_dataset(self.args.data)
+                dataset = YOLODataset(data['val'], data=data, imgsz=self.imgsz[0], augment=False)
                 images = []
                 n_images = 100  # maximum number of images
                 for n, batch in enumerate(dataset):
                     if n >= n_images:
                         break
-                    im = batch['img'].permute(1, 2, 0)[None]  # list to nparray, CHW to BHWC,
+                    im = batch['img'].permute(1, 2, 0)[None]  # list to nparray, CHW to BHWC
                     images.append(im)
                 f.mkdir()
                 images = torch.cat(images, 0).float()
@@ -620,9 +622,10 @@ class Exporter:
             else:
                 int8 = '-oiqt -qt per-tensor'
         else:
+            verbosity = '--non_verbose'
             int8 = ''
 
-        cmd = f'onnx2tf -i "{f_onnx}" -o "{f}" -nuo --non_verbose {int8}'.strip()
+        cmd = f'onnx2tf -i "{f_onnx}" -o "{f}" -nuo {verbosity} {int8}'.strip()
         LOGGER.info(f"{prefix} running '{cmd}'")
         subprocess.run(cmd, shell=True)
         yaml_save(f / 'metadata.yaml', self.metadata)  # add metadata.yaml
