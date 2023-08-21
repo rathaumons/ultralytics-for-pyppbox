@@ -30,8 +30,6 @@ setup(
         'Bug Reports': 'https://github.com/rathaumons/ultralytics-for-pyppbox/issues',
         'Funding': 'https://ultralytics.com',
         'Source': 'https://github.com/rathaumons/ultralytics-for-pyppbox'},
-    author='rathaROG',
-    author_email='hello@ultralytics.com',
     packages=find_packages(),  # required
     include_package_data=True,
     install_requires=REQUIREMENTS,

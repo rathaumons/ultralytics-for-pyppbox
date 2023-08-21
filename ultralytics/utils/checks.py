@@ -20,7 +20,7 @@ import requests
 import torch
 from matplotlib import font_manager
 
-from ultralytics.utils import (AUTOINSTALL, LOGGER, ONLINE, ROOT, USER_CONFIG_DIR, ThreadingLocked, TryExcept,
+from ultralytics.utils import (ASSETS, AUTOINSTALL, LOGGER, ONLINE, ROOT, USER_CONFIG_DIR, ThreadingLocked, TryExcept,
                                clean_url, colorstr, downloads, emojis, is_colab, is_docker, is_jupyter, is_kaggle,
                                is_online, is_pip_package, url2file)
 
@@ -172,6 +172,7 @@ def check_latest_pypi_version(package_name='pyppbox-ultralytics'):
     return None
 
 
+
 def check_pip_update_available():
     """
     Checks if a new version of the ultralytics package is available on PyPI.
@@ -184,8 +185,8 @@ def check_pip_update_available():
             from ultralytics import __version__
             latest = check_latest_pypi_version()
             if pkg.parse_version(__version__) < pkg.parse_version(latest):  # update is available
-                LOGGER.info(f'New https://pypi.org/project/ultralytics/{latest} available 😃 '
-                            f"Update with 'pip install -U ultralytics'")
+                LOGGER.info(f'New https://pypi.org/project/pyppbox-ultralytics/{latest} available 😃 '
+                            f"Update with 'pip install -U pyppbox-ultralytics'")
                 return True
     return False
 
@@ -442,11 +443,17 @@ def check_amp(model):
     Args:
         model (nn.Module): A YOLOv8 model instance.
 
+    Example:
+        ```python
+        from ultralytics import YOLO
+        from ultralytics.utils.checks import check_amp
+
+        model = YOLO('yolov8n.pt').model.cuda()
+        check_amp(model)
+        ```
+
     Returns:
         (bool): Returns True if the AMP functionality works correctly with YOLOv8 model, else False.
-
-    Raises:
-        AssertionError: If the AMP checks fail, indicating anomalies with the AMP functionality on the system.
     """
     device = next(model.parameters()).device  # get model device
     if device.type in ('cpu', 'mps'):
@@ -460,8 +467,7 @@ def check_amp(model):
         del m
         return a.shape == b.shape and torch.allclose(a, b.float(), atol=0.5)  # close to 0.5 absolute tolerance
 
-    f = ROOT / 'assets/bus.jpg'  # image to check
-    im = f if f.exists() else 'https://ultralytics.com/images/bus.jpg' if ONLINE else np.ones((640, 640, 3))
+    im = ASSETS / 'bus.jpg'  # image to check
     prefix = colorstr('AMP: ')
     LOGGER.info(f'{prefix}running Automatic Mixed Precision (AMP) checks with YOLOv8n...')
     warning_msg = "Setting 'amp=True'. If you experience zero-mAP or NaN losses you can disable AMP with amp=False."
@@ -484,11 +490,9 @@ def check_amp(model):
 
 def git_describe(path=ROOT):  # path must be a directory
     """Return human-readable git description, i.e. v5.0-5-g3e25f1e https://git-scm.com/docs/git-describe."""
-    try:
-        assert (Path(path) / '.git').is_dir()
+    with contextlib.suppress(Exception):
         return subprocess.check_output(f'git -C {path} describe --tags --long --always', shell=True).decode()[:-1]
-    except AssertionError:
-        return ''
+    return ''
 
 
 def print_args(args: Optional[dict] = None, show_file=True, show_func=False):
