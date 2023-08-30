@@ -26,12 +26,11 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
-from ultralytics.cfg import get_cfg
+from ultralytics.cfg import get_cfg, get_save_dir
 from ultralytics.data.utils import check_cls_dataset, check_det_dataset
 from ultralytics.nn.autobackend import AutoBackend
-from ultralytics.utils import DEFAULT_CFG, LOGGER, RANK, SETTINGS, TQDM_BAR_FORMAT, callbacks, colorstr, emojis
+from ultralytics.utils import LOGGER, TQDM_BAR_FORMAT, callbacks, colorstr, emojis
 from ultralytics.utils.checks import check_imgsz
-from ultralytics.utils.files import increment_path
 from ultralytics.utils.ops import Profile
 from ultralytics.utils.torch_utils import de_parallel, select_device, smart_inference_mode
 
@@ -43,9 +42,9 @@ class BaseValidator:
     A base class for creating validators.
 
     Attributes:
+        args (SimpleNamespace): Configuration for the validator.
         dataloader (DataLoader): Dataloader to use for validation.
         pbar (tqdm): Progress bar to update during validation.
-        args (SimpleNamespace): Configuration for the validator.
         model (nn.Module): Model to validate.
         data (dict): Data dictionary.
         device (torch.device): Device to use for validation.
@@ -71,14 +70,14 @@ class BaseValidator:
 
         Args:
             dataloader (torch.utils.data.DataLoader): Dataloader to be used for validation.
-            save_dir (Path): Directory to save results.
+            save_dir (Path, optional): Directory to save results.
             pbar (tqdm.tqdm): Progress bar for displaying progress.
             args (SimpleNamespace): Configuration for the validator.
             _callbacks (dict): Dictionary to store various callback functions.
         """
+        self.args = get_cfg(overrides=args)
         self.dataloader = dataloader
         self.pbar = pbar
-        self.args = args or get_cfg(DEFAULT_CFG)
         self.model = None
         self.data = None
         self.device = None
@@ -93,12 +92,8 @@ class BaseValidator:
         self.jdict = None
         self.speed = {'preprocess': 0.0, 'inference': 0.0, 'loss': 0.0, 'postprocess': 0.0}
 
-        project = self.args.project or Path(SETTINGS['runs_dir']) / self.args.task
-        name = self.args.name or f'{self.args.mode}'
-        self.save_dir = save_dir or increment_path(Path(project) / name,
-                                                   exist_ok=self.args.exist_ok if RANK in (-1, 0) else True)
+        self.save_dir = save_dir or get_save_dir(self.args)
         (self.save_dir / 'labels' if self.args.save_txt else self.save_dir).mkdir(parents=True, exist_ok=True)
-
         if self.args.conf is None:
             self.args.conf = 0.001  # default conf=0.001
 
@@ -126,8 +121,7 @@ class BaseValidator:
         else:
             callbacks.add_integration_callbacks(self)
             self.run_callbacks('on_val_start')
-            assert model is not None, 'Either trainer or model is needed for validation'
-            model = AutoBackend(model,
+            model = AutoBackend(model or self.args.model,
                                 device=select_device(self.args.device, self.args.batch),
                                 dnn=self.args.dnn,
                                 data=self.args.data,
@@ -223,7 +217,7 @@ class BaseValidator:
         Args:
             pred_classes (torch.Tensor): Predicted class indices of shape(N,).
             true_classes (torch.Tensor): Target class indices of shape(M,).
-            iou (torch.Tensor): IoU thresholds from 0.50 to 0.95 in space of 0.05.
+            iou (torch.Tensor): An NxM tensor containing the pairwise IoU values for predictions and ground of truth
 
         Returns:
             (torch.Tensor): Correct tensor of shape(N,10) for 10 IoU thresholds.
