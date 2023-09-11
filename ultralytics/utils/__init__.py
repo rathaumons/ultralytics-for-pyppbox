@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import yaml
+from tqdm import tqdm as tqdm_original
 
 from ultralytics import __version__
 
@@ -35,7 +36,7 @@ DEFAULT_CFG_PATH = ROOT / 'cfg/default.yaml'
 NUM_THREADS = min(8, max(1, os.cpu_count() - 1))  # number of YOLOv5 multiprocessing threads
 AUTOINSTALL = str(os.getenv('YOLO_AUTOINSTALL', True)).lower() == 'true'  # global auto-install mode
 VERBOSE = str(os.getenv('YOLO_VERBOSE', True)).lower() == 'true'  # global verbose mode
-TQDM_BAR_FORMAT = '{l_bar}{bar:10}{r_bar}'  # tqdm bar format
+TQDM_BAR_FORMAT = '{l_bar}{bar:10}{r_bar}' if VERBOSE else None  # tqdm bar format
 LOGGING_NAME = 'ultralytics'
 MACOS, LINUX, WINDOWS = (platform.system() == x for x in ['Darwin', 'Linux', 'Windows'])  # environment booleans
 ARM64 = platform.machine() in ('arm64', 'aarch64')  # ARM64 booleans
@@ -76,7 +77,7 @@ HELP_MSG = \
             yolo detect train data=coco128.yaml model=yolov8n.pt epochs=10 lr0=0.01
 
         - Predict a YouTube video using a pretrained segmentation model at image size 320:
-            yolo segment predict model=yolov8n-seg.pt source='https://youtu.be/Zgi9g1ksQHc' imgsz=320
+            yolo segment predict model=yolov8n-seg.pt source='https://youtu.be/LNwODJXcvt4' imgsz=320
 
         - Val a pretrained detection model at batch-size 1 and image size 640:
             yolo detect val model=yolov8n.pt data=coco128.yaml batch=1 imgsz=640
@@ -104,6 +105,22 @@ np.set_printoptions(linewidth=320, formatter={'float_kind': '{:11.5g}'.format}) 
 os.environ['NUMEXPR_MAX_THREADS'] = str(NUM_THREADS)  # NumExpr max threads
 os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'  # for deterministic training
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # suppress verbose TF compiler warnings in Colab
+
+
+class TQDM(tqdm_original):
+    """
+    Custom Ultralytics tqdm class with different default arguments.
+
+    Args:
+        *args (list): Positional arguments passed to original tqdm.
+        **kwargs (dict): Keyword arguments, with custom defaults applied.
+    """
+
+    def __init__(self, *args, **kwargs):
+        # Set new default values (these can still be overridden when calling TQDM)
+        kwargs['disable'] = not VERBOSE or kwargs.get('disable', False)  # logical 'and' with default value if passed
+        kwargs.setdefault('bar_format', TQDM_BAR_FORMAT)  # override default value if passed
+        super().__init__(*args, **kwargs)
 
 
 class SimpleClass:
@@ -286,13 +303,14 @@ class ThreadingLocked:
         return decorated
 
 
-def yaml_save(file='data.yaml', data=None):
+def yaml_save(file='data.yaml', data=None, header=''):
     """
     Save YAML data to a file.
 
     Args:
         file (str, optional): File name. Default is 'data.yaml'.
         data (dict): Data to save in YAML format.
+        header (str, optional): YAML header to add.
 
     Returns:
         (None): Data is saved to the specified file.
@@ -310,7 +328,9 @@ def yaml_save(file='data.yaml', data=None):
             data[k] = str(v)
 
     # Dump data to file in YAML format
-    with open(file, 'w') as f:
+    with open(file, 'w', errors='ignore', encoding='utf-8') as f:
+        if header:
+            f.write(header)
         yaml.safe_dump(data, f, sort_keys=False, allow_unicode=True)
 
 
@@ -325,6 +345,7 @@ def yaml_load(file='data.yaml', append_filename=False):
     Returns:
         (dict): YAML data and file name.
     """
+    assert Path(file).suffix in ('.yaml', '.yml'), f'Attempting to load non-YAML file {file} with yaml_load()'
     with open(file, errors='ignore', encoding='utf-8') as f:
         s = f.read()  # string
 
@@ -614,7 +635,33 @@ SETTINGS_YAML = USER_CONFIG_DIR / 'settings.yaml'
 
 
 def colorstr(*input):
-    """Colors a string https://en.wikipedia.org/wiki/ANSI_escape_code, i.e.  colorstr('blue', 'hello world')."""
+    """
+    Colors a string based on the provided color and style arguments. Utilizes ANSI escape codes.
+    See https://en.wikipedia.org/wiki/ANSI_escape_code for more details.
+
+    This function can be called in two ways:
+        - colorstr('color', 'style', 'your string')
+        - colorstr('your string')
+
+    In the second form, 'blue' and 'bold' will be applied by default.
+
+    Args:
+        *input (str): A sequence of strings where the first n-1 strings are color and style arguments,
+                      and the last string is the one to be colored.
+
+    Supported Colors and Styles:
+        Basic Colors: 'black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white'
+        Bright Colors: 'bright_black', 'bright_red', 'bright_green', 'bright_yellow',
+                       'bright_blue', 'bright_magenta', 'bright_cyan', 'bright_white'
+        Misc: 'end', 'bold', 'underline'
+
+    Returns:
+        (str): The input string wrapped with ANSI escape codes for the specified color and style.
+
+    Examples:
+        >>> colorstr('blue', 'bold', 'hello world')
+        >>> '\033[34m\033[1mhello world\033[0m'
+    """
     *args, string = input if len(input) > 1 else ('blue', 'bold', input[0])  # color arguments, string
     colors = {
         'black': '\033[30m',  # basic colors
@@ -637,6 +684,24 @@ def colorstr(*input):
         'bold': '\033[1m',
         'underline': '\033[4m'}
     return ''.join(colors[x] for x in args) + f'{string}' + colors['end']
+
+
+def remove_colorstr(input_string):
+    """
+    Removes ANSI escape codes from a string, effectively un-coloring it.
+
+    Args:
+        input_string (str): The string to remove color and style from.
+
+    Returns:
+        (str): A new string with all ANSI escape codes removed.
+
+    Examples:
+        >>> remove_colorstr(colorstr('blue', 'bold', 'hello world'))
+        >>> 'hello world'
+    """
+    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+    return ansi_escape.sub('', input_string)
 
 
 class TryExcept(contextlib.ContextDecorator):
