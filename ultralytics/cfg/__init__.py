@@ -1,7 +1,6 @@
 # Ultralytics YOLO 🚀, AGPL-3.0 license
 
 import contextlib
-import re
 import shutil
 import sys
 from pathlib import Path
@@ -291,19 +290,20 @@ def handle_yolo_settings(args: List[str]) -> None:
 
 def parse_key_value_pair(pair):
     """Parse one 'key=value' pair and return key and value."""
-    re.sub(r' *= *', '=', pair)  # remove spaces around equals sign
     k, v = pair.split('=', 1)  # split on first '=' sign
+    k, v = k.strip(), v.strip()  # remove spaces
     assert v, f"missing '{k}' value"
     return k, smart_value(v)
 
 
 def smart_value(v):
     """Convert a string to an underlying type such as int, float, bool, etc."""
-    if v.lower() == 'none':
+    v_lower = v.lower()
+    if v_lower == 'none':
         return None
-    elif v.lower() == 'true':
+    elif v_lower == 'true':
         return True
-    elif v.lower() == 'false':
+    elif v_lower == 'false':
         return False
     else:
         with contextlib.suppress(Exception):
@@ -333,7 +333,7 @@ def entrypoint(debug=''):
 
     special = {
         'help': lambda: LOGGER.info(CLI_HELP_MSG),
-        'checks': checks.check_yolo,
+        'checks': checks.collect_system_info,
         'version': lambda: LOGGER.info(__version__),
         'settings': lambda: handle_yolo_settings(args[1:]),
         'cfg': lambda: yaml_print(DEFAULT_CFG_PATH),
