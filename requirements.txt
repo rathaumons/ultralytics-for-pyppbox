@@ -2,12 +2,13 @@
 # Example: pip install -r requirements.txt
 
 # Base ----------------------------------------
-matplotlib>=3.2.2
+matplotlib>=3.3.0
 Pillow>=7.1.2
 PyYAML>=5.3.1
 requests>=2.23.0
 scipy>=1.4.1
 tqdm>=4.64.0
+hub-sdk
 
 # Logging -------------------------------------
 # tensorboard>=2.13.0
