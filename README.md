@@ -2,7 +2,7 @@
 
 # Customized Ultralytics for [`pyppbox`](https://github.com/rathaumons/pyppbox)
 
-* Updated: **December 14, 2023**
+* Updated: **January 14, 2024**
 * Synced with: v8.1.1 -> [[596c068]](https://github.com/ultralytics/ultralytics/commit/596c068b18107a743ea8fdad6494878eea1e897f)
 * All credit and info -> [[Original Ultralytics repo]](https://github.com/ultralytics/ultralytics)
 * What customized:
