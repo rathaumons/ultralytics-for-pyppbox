@@ -212,7 +212,7 @@ def plt_settings(rcparams=None, backend="Agg"):
         def wrapper(*args, **kwargs):
             """Sets rc parameters and backend, calls the original function, and restores the settings."""
             original_backend = plt.get_backend()
-            if backend != original_backend:
+            if backend.lower() != original_backend.lower():
                 plt.close("all")  # auto-close()ing of figures upon backend switching is deprecated since 3.8
                 plt.switch_backend(backend)
 
@@ -783,6 +783,7 @@ class Retry(contextlib.ContextDecorator):
         """Decorator implementation for Retry with exponential backoff."""
 
         def wrapped_func(*args, **kwargs):
+            """Applies retries to the decorated function or method."""
             self._attempts = 0
             while self._attempts < self.times:
                 try:
