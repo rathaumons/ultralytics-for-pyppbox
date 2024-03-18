@@ -32,7 +32,6 @@ def parse_requirements(file_path: Path):
     Returns:
         (List[str]): List of parsed requirements.
     """
-
     requirements = []
     for line in Path(file_path).read_text().splitlines():
         line = line.strip()
@@ -70,16 +69,22 @@ setup(
             'pytest',
             'pytest-cov',
             'coverage',
-            'mkdocs-material',
+            'mkdocs-material>=9.5.9',
             'mkdocstrings[python]',
+            'mkdocs-jupyter', # for notebooks
             'mkdocs-redirects',  # for 301 redirects
-            'mkdocs-ultralytics-plugin>=0.0.43',  # for meta descriptions and images, dates and authors
+            'mkdocs-ultralytics-plugin>=0.0.44',  # for meta descriptions and images, dates and authors
         ],
         'export': [
+            'onnx>=1.12.0', # ONNX export
             'coremltools>=7.0',
-            'openvino-dev>=2023.0',
-            'tensorflowjs',  # automatically installs tensorflow
-        ], 
+            'openvino>=2024.0.0', # OpenVINO export
+        ],
+        'explorer': [
+            'lancedb', # vector search
+            'duckdb<=0.9.2', # SQL queries, duckdb==0.10.0 bug https://github.com/ultralytics/ultralytics/pull/8181
+            'streamlit', # visualizing with GUI
+        ]
     },
     classifiers=[
         'Development Status :: 4 - Beta',
