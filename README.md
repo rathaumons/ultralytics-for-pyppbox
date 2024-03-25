@@ -1,11 +1,11 @@
 [![Test Build](https://github.com/rathaumons/ultralytics-for-pyppbox/actions/workflows/test_build.yaml/badge.svg)](https://github.com/rathaumons/ultralytics-for-pyppbox/actions/workflows/test_build.yaml) [![Build PyPI](https://github.com/rathaumons/ultralytics-for-pyppbox/actions/workflows/autobuild.yaml/badge.svg)](https://github.com/rathaumons/ultralytics-for-pyppbox/actions/workflows/autobuild.yaml)
 
-# Customized Ultralytics for [`pyppbox`](https://github.com/rathaumons/pyppbox)
+# Customized Ultralytics for pyppbox
 
-* Updated: **March 18, 2024**
-* Synced with: v8.1.29 -> [[f9edac6]](https://github.com/ultralytics/ultralytics/commit/f9edac6a089db168fb17eaed6d3048a84cf92a50)
+* Updated: **March 25, 2024**
+* Synced with: v8.1.34 -> [[5be2ffb]](https://github.com/ultralytics/ultralytics/commit/5be2ffbd13e278f108e8f37ba439d9c51e7c5822)
 * All credit and info -> [[Original Ultralytics repo]](https://github.com/ultralytics/ultralytics)
-* What customized:
+* Customized for [`pyppbox`](https://github.com/rathaumons/pyppbox):
     - Enable OpenCV multithreading
     - Remove restrictions on customized OpenCV
     - Disable dependency auto-install
@@ -22,13 +22,17 @@
     pip install git+https://github.com/rathaumons/ultralytics-for-pyppbox.git
     ```
 * Or build from source:
+
+    <details><summary><ins>Click here to expand!</ins></summary>
+    
     ```
     git clone https://github.com/rathaumons/ultralytics-for-pyppbox.git
     cd ultralytics-for-pyppbox
     python -m pip install --upgrade pip
     pip install "setuptools>=67.2.0"
-    pip install -r requirements.txt
     pip install wheel build
     python -m build --wheel --skip-dependency-check --no-isolatio
     cd dist
     ```
+    
+    </details>
