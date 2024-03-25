@@ -62,19 +62,6 @@ setup(
     include_package_data=True,
     install_requires=parse_requirements(PARENT / 'requirements.txt'),
     extras_require={
-        'dev': [
-            'ipython',
-            'check-manifest',
-            'pre-commit',
-            'pytest',
-            'pytest-cov',
-            'coverage',
-            'mkdocs-material>=9.5.9',
-            'mkdocstrings[python]',
-            'mkdocs-jupyter', # for notebooks
-            'mkdocs-redirects',  # for 301 redirects
-            'mkdocs-ultralytics-plugin>=0.0.44',  # for meta descriptions and images, dates and authors
-        ],
         'export': [
             'onnx>=1.12.0', # ONNX export
             'coremltools>=7.0',
