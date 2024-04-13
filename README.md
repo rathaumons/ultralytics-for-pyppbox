@@ -29,7 +29,7 @@
     git clone https://github.com/rathaumons/ultralytics-for-pyppbox.git
     cd ultralytics-for-pyppbox
     python -m pip install --upgrade pip
-    pip install "setuptools>=67.2.0"
+    python -m pip install -U pip setuptools
     pip install wheel build
     python -m build --wheel --skip-dependency-check --no-isolatio
     cd dist
