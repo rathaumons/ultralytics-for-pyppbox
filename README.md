@@ -2,8 +2,8 @@
 
 # Customized Ultralytics for pyppbox
 
-* Updated: **April 2, 2024**
-* Synced with: v8.1.42 -> [[3208eb7]](https://github.com/ultralytics/ultralytics/commit/3208eb72ef277b0b825306a84df6c460a8406647)
+* Updated: **April 13, 2024**
+* Synced with: v8.1.47 -> [[42416bc]](https://github.com/ultralytics/ultralytics/commit/42416bc608b49cbdcb091e81adbb4caaf11eac38)
 * All credit and info -> [[Original Ultralytics repo]](https://github.com/ultralytics/ultralytics)
 * Customized for [`pyppbox`](https://github.com/rathaumons/pyppbox):
     - Enable OpenCV multithreading
