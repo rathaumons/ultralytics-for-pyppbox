@@ -63,6 +63,7 @@ setup(
     install_requires=parse_requirements(PARENT / 'requirements.txt'),
     extras_require={
         'export': [
+            'numpy==1.23.5',
             'onnx>=1.12.0', # ONNX export
             'coremltools>=7.0',
             'openvino>=2024.0.0', # OpenVINO export
