@@ -1,13 +1,14 @@
-[![Test Build](https://github.com/rathaumons/ultralytics-for-pyppbox/actions/workflows/test_build.yaml/badge.svg)](https://github.com/rathaumons/ultralytics-for-pyppbox/actions/workflows/test_build.yaml) [![Build PyPI](https://github.com/rathaumons/ultralytics-for-pyppbox/actions/workflows/autobuild.yaml/badge.svg)](https://github.com/rathaumons/ultralytics-for-pyppbox/actions/workflows/autobuild.yaml)
+[![Test Build](https://github.com/rathaumons/ultralytics-for-pyppbox/actions/workflows/test_build.yaml/badge.svg?branch=main)](https://github.com/rathaumons/ultralytics-for-pyppbox/actions/workflows/test_build.yaml) [![Publish on PyPI](https://github.com/rathaumons/ultralytics-for-pyppbox/actions/workflows/publish.yaml/badge.svg?branch=main)](https://github.com/rathaumons/ultralytics-for-pyppbox/actions/workflows/publish.yaml)
 
 # Customized Ultralytics for pyppbox
 
-* Updated: **April 30, 2024**
-* Synced with: v8.1.48 -> [[c54b013]](https://github.com/ultralytics/ultralytics/commit/c54b013188870dafdd5ce0d78b3f5f3fdee655fd)
+* Updated: **September 8, 2026**
+* Synced with: v8.4.144 -> [[1ba77f6]](https://github.com/ultralytics/ultralytics/commit/1ba77f668344711bf1c8859fe318ce2cda81757d)
 * All credit and info -> [[Original Ultralytics repo]](https://github.com/ultralytics/ultralytics)
 * Customized for [`pyppbox`](https://github.com/rathaumons/pyppbox):
     - Enable OpenCV multithreading
     - Remove restrictions on customized OpenCV
+    - Remove unnecessary dependencies
     - Disable dependency auto-install
     - Disable auto update
 
