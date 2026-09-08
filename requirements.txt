@@ -1,29 +1,16 @@
-# Ultralytics requirements
-# Example: pip install -r requirements.txt
-
-# Base ----------------------------------------
+# Required dependencies
+# Manual installation: pip install -r requirements.txt
+numpy>=1.23.5
 matplotlib>=3.3.0
 Pillow>=7.1.2
 PyYAML>=5.3.1
 requests>=2.23.0
 scipy>=1.4.1
-tqdm>=4.64.0
-hub-sdk>=0.0.5
-
-# Logging -------------------------------------
-# tensorboard>=2.13.0
-# dvclive>=2.12.0
-# comet
-
-# Plotting ------------------------------------
-pandas>=1.1.4
-seaborn>=0.11.0
-
-# Extras --------------------------------------
-psutil  # system utilization
-py-cpuinfo  # display CPU info
-thop>=0.1.1  # FLOPs computation
-# ipython  # interactive notebook
-# albumentations>=1.0.3  # training augmentations
-# pycocotools>=2.0.6  # COCO mAP
-# roboflow
+psutil>=5.8.0, # system utilization
+polars>=0.20.0,
+ultralytics-thop>=2.1.6 # FLOPs computation https://github.com/ultralytics/thop
+hub-sdk>=0.0.12 # Ultralytics HUB
+# Optional dependencies
+# cloudpickle>=3.1.1
+# filelock>=3.16.1
+# ultralytics-platform>=0.1.32
