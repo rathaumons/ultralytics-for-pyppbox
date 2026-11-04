@@ -2,15 +2,10 @@
 
 # Customized Ultralytics for pyppbox
 
-* Updated: **September 8, 2026**
-* Synced with: v8.4.144 -> [[1ba77f6]](https://github.com/ultralytics/ultralytics/commit/1ba77f668344711bf1c8859fe318ce2cda81757d)
+* Updated: **November 4, 2026**
+* Synced with: v8.4.202 -> [[ae725d5]](https://github.com/ultralytics/ultralytics/commit/ae725d5cb20c2d849b864cd34fc15f5c55f877a5)
 * All credit and info -> [[Original Ultralytics repo]](https://github.com/ultralytics/ultralytics)
-* Customized for [`pyppbox`](https://github.com/rathaumons/pyppbox):
-    - Enable OpenCV multithreading
-    - Remove restrictions on customized OpenCV
-    - Remove unnecessary dependencies
-    - Disable dependency auto-install
-    - Disable auto update
+* Customized for [`pyppbox`](https://github.com/rathaumons/pyppbox) -> [SCOPE.md](https://github.com/rathaumons/ultralytics-for-pyppbox/blob/main/SCOPE.md)
 
 ## Installation
 
