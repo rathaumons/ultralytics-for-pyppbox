@@ -30,7 +30,8 @@ def auto_annotate(
         sam_model (str): Path or name of the pre-trained SAM segmentation model.
         device (str): Device to run the models on (e.g., 'cpu', 'cuda', '0'). Empty string for auto-selection.
         conf (float): Confidence threshold for detection model.
-        iou (float): IoU threshold for filtering overlapping boxes in detection results.
+        iou (float): NMS IoU threshold for filtering overlapping boxes in detection results. Defaults to 0.45, lower
+            than the predict default `iou=0.7`.
         imgsz (int): Input image resize dimension.
         max_det (int): Maximum number of detections per image.
         classes (list[int], optional): Filter predictions to specified class IDs, returning only relevant detections.
@@ -54,13 +55,13 @@ def auto_annotate(
     )
 
     for result in det_results:
+        segments = []
         if class_ids := result.boxes.cls.int().tolist():  # Extract class IDs from detection results
             boxes = result.boxes.xyxy  # Boxes object for bbox outputs
-            sam_results = sam_model(result.orig_img, bboxes=boxes, verbose=False, save=False, device=device)
-            segments = sam_results[0].masks.xyn
+            segments = sam_model(result.orig_img, bboxes=boxes, verbose=False, save=False, device=device)[0].masks.xyn
 
-            with open(f"{Path(output_dir) / Path(result.path).stem}.txt", "w", encoding="utf-8") as f:
-                for i, s in enumerate(segments):
-                    if len(s) >= 3:  # fewer than 3 points is not a polygon, and writes a row no loader accepts
-                        segment = map(str, s.reshape(-1).tolist())
-                        f.write(f"{class_ids[i]} " + " ".join(segment) + "\n")
+        with open(f"{Path(output_dir) / det_model.predictor.txt_path.name}.txt", "w", encoding="utf-8") as f:
+            for i, s in enumerate(segments):
+                if len(s) >= 3:  # fewer than 3 points is not a polygon, and writes a row no loader accepts
+                    segment = map(str, s.reshape(-1).tolist())
+                    f.write(f"{class_ids[i]} " + " ".join(segment) + "\n")

@@ -33,8 +33,7 @@ class YOLOEDetectValidator(DetectionValidator):
 
     Methods:
         get_visual_pe: Extract visual prompt embeddings from training samples.
-        preprocess: Preprocess batch data ensuring visuals are on the same device as images.
-        get_vpe_dataloader: Create a dataloader for LVIS training visual prompt samples.
+        get_vpe_dataloader: Create a dataloader of visual prompt samples from a reference dataset.
         get_model: Prepare a validation model with text or visual prompt embeddings.
 
     Examples:
@@ -62,6 +61,7 @@ class YOLOEDetectValidator(DetectionValidator):
             (torch.Tensor): Visual prompt embeddings with shape (1, num_classes, embed_dim).
         """
         assert isinstance(model, YOLOEModel)
+        assert not model.model[-1].is_fused, "Visual prompts need an unfused YOLOE model."
         names = [name.split("/", 1)[0] for name in list(dataloader.dataset.data["names"].values())]
         visual_pe = torch.zeros(len(names), model.model[-1].embed, device=self.device)
         cls_visual_num = torch.zeros(len(names))
@@ -96,7 +96,7 @@ class YOLOEDetectValidator(DetectionValidator):
         return visual_pe.unsqueeze(0)
 
     def get_vpe_dataloader(self, data: dict[str, Any]) -> torch.utils.data.DataLoader:
-        """Create a dataloader for LVIS training visual prompt samples.
+        """Create a dataloader of visual prompt samples from a reference dataset.
 
         This method prepares a dataloader for visual prompt embeddings (VPE) using the specified dataset. It applies
         necessary transformations including LoadVisualPrompt and configurations to the dataset for validation purposes.
@@ -141,8 +141,8 @@ class YOLOEDetectValidator(DetectionValidator):
         """Prepare text, visual, or prompt-free models before validation inference setup.
 
         Args:
-            trainer (object, optional): Trainer object containing the model and device.
             model (YOLOEModel | str, optional): Model to validate. Required if trainer is not provided.
+            trainer (object, optional): Trainer object containing the model and device.
             refer_data (str, optional): Path to reference data for visual prompts.
             load_vp (bool): Whether to load visual prompts. If False, text prompts are used.
 

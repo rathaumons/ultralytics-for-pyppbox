@@ -6,6 +6,7 @@ from copy import copy
 from typing import Any
 
 import numpy as np
+import torch
 
 from ultralytics.data.utils import add_polygon_background
 from ultralytics.models import yolo
@@ -45,19 +46,19 @@ class SemanticSegmentationTrainer(DetectionTrainer):
         """Parse the dataset YAML and add background metadata for polygon labels when required."""
         return add_polygon_background(super().get_dataset())
 
-    def get_model(self, cfg: str | None = None, weights: str | None = None, verbose: bool = True):
+    def get_model(self, cfg: str | dict | None = None, weights: torch.nn.Module | None = None, verbose: bool = True):
         """Return a SemanticSegmentationModel with optional pretrained backbone.
 
         Args:
-            cfg (str, optional): Path to model configuration file.
-            weights (str | Path, optional): Path to model weights.
+            cfg (str | dict, optional): Model configuration file path or dictionary.
+            weights (torch.nn.Module, optional): Pretrained model whose weights are loaded into the new model.
             verbose (bool): Whether to display model information.
 
         Returns:
             (SemanticSegmentationModel): Semantic segmentation model.
         """
-        model = SemanticSegmentationModel(
-            cfg, nc=self.data["nc"], ch=self.data["channels"], verbose=verbose and RANK == -1
+        model = self.set_model_names_for_load(
+            SemanticSegmentationModel(cfg, nc=self.data["nc"], ch=self.data["channels"], verbose=verbose and RANK == -1)
         )
         if weights:
             model.load(weights)
@@ -78,11 +79,10 @@ class SemanticSegmentationTrainer(DetectionTrainer):
     def get_class_counts(self, max_masks=None):
         """Return per-class pixel counts from training masks, optionally sampled to max_masks."""
         nc = self.data["nc"]
-        pixel_counts = np.zeros(nc, dtype=np.float32)
+        k = 2 if nc == 1 else nc  # binary masks store the class as 1 and background as 0
+        pixel_counts = np.zeros(k, dtype=np.float32)
         dataset = self.train_loader.dataset
         labels = getattr(dataset, "labels", [])
-        if not labels:
-            return pixel_counts
         indices = np.arange(len(labels))
         if max_masks and len(indices) > max_masks:
             indices = np.linspace(0, len(labels) - 1, max_masks).astype(int)
@@ -95,11 +95,11 @@ class SemanticSegmentationTrainer(DetectionTrainer):
                 continue
             if include_class is not None:
                 mask[~np.isin(mask, include_class)] = 255
-            valid = (mask >= 0) & (mask < nc) & (mask != 255)
+            valid = (mask >= 0) & (mask < k) & (mask != 255)
             if valid.any():
                 classes, counts = np.unique(mask[valid], return_counts=True)
                 pixel_counts[classes.astype(int)] += counts
-        return pixel_counts
+        return pixel_counts[-nc:]
 
     def compute_class_weights(self, class_counts):
         """Compute ENet inverse-log `(1/ln(1.02 + p))**cls_pw` weights (Paszke et al., 2016, arXiv:1606.02147)."""
