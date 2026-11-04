@@ -2,48 +2,28 @@
 
 # Ultralytics YOLO Examples
 
-> [!WARNING]
-> The examples in this directory are community-contributed and showcase creative ways to use Ultralytics YOLO models. While we truly appreciate these contributions, they may not always reflect the latest best practices or receive regular updates. To help streamline our codebase and focus our resources on maintaining comprehensive, up-to-date official documentation and guides, we plan to retire these examples in a future Ultralytics release.
+These community-contributed examples focus on tracking and related applications
+retained in this fork. Each example can require optional packages, models, or
+specific hardware; check its own instructions before running it.
 
-Welcome to the Ultralytics examples directory! This collection showcases practical applications and detailed walkthroughs for integrating [Ultralytics YOLO models](https://docs.ultralytics.com/models) into various real-world projects. Explore Python scripts and Jupyter notebooks designed to help you leverage the power of models like [Ultralytics YOLO26](https://docs.ultralytics.com/models/yolo26) for tasks like [object detection](https://docs.ultralytics.com/tasks/detect), [instance segmentation](https://docs.ultralytics.com/tasks/segment), [semantic segmentation](https://docs.ultralytics.com/tasks/semantic), [pose estimation](https://docs.ultralytics.com/tasks/pose), and more.
+## Python Examples
 
-Whether you're deploying models on [edge devices](https://www.ultralytics.com/glossary/edge-ai) using formats like [ONNX](https://docs.ultralytics.com/integrations/onnx) with [ONNX Runtime](https://onnxruntime.ai/), optimizing with [TensorRT](https://docs.ultralytics.com/integrations/tensorrt) on NVIDIA Jetson, using [OpenVINO](https://docs.ultralytics.com/integrations/openvino) for Intel hardware, or integrating with frameworks like [OpenCV](https://opencv.org/), these examples provide valuable insights and code snippets. Find inspiration for your next [computer vision](https://www.ultralytics.com/glossary/computer-vision-cv) project and see how others are using Ultralytics YOLO to build innovative [AI solutions](https://www.ultralytics.com/solutions) on platforms ranging from C++ and C# to Python and Rust.
+| Example | Purpose |
+| --- | --- |
+| [Axelera pose tracking](./YOLO-Axelera-Python) | YOLO26 pose inference with optional Axelera tracking. |
+| [Interactive tracking UI](./YOLO-Interactive-Tracking-UI) | Select and follow objects in an OpenCV interface. |
+| [Action recognition](./YOLOv8-Action-Recognition) | Track people and classify actions in video. |
+| [Region counter](./YOLOv8-Region-Counter) | Count tracked objects in adjustable regions. |
 
-## 💡 Example Applications
+## Notebooks
 
-Browse through the community-contributed examples below. These projects demonstrate various use cases and deployment strategies for Ultralytics YOLO models across different platforms and programming languages. All C++ examples are grouped together under [`./cpp`](./cpp) with a combined build-and-test guide.
+| Notebook | Purpose |
+| --- | --- |
+| [Object tracking](./object_tracking.ipynb) | Track objects across video frames. |
+| [Object counting](./object_counting.ipynb) | Count tracked objects. |
+| [Heatmaps](./heatmaps.ipynb) | Visualize object movement over time. |
 
-### C++
-
-All C++ examples live under [`./cpp`](./cpp) and support every YOLO task and generation. See the [C++ examples guide](./cpp) for a combined build-and-test walkthrough.
-
-| Title                                      | Backend      | Contributor                                                                                                                                                                                       |
-| ------------------------------------------ | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [YOLO OpenCV DNN CPP](./cpp/OpenCV-DNN)    | OpenCV DNN   | [Justas Bartnykas](https://github.com/JustasBart)                                                                                                                                                 |
-| [YOLO ONNX Runtime CPP](./cpp/ONNXRuntime) | ONNX Runtime | [Onuralp Sezer](https://github.com/onuralpszr)                                                                                                                                                    |
-| [YOLO LibTorch CPP](./cpp/LibTorch)        | LibTorch     | [Myyura](https://github.com/Myyura)                                                                                                                                                               |
-| [YOLO OpenVINO CPP](./cpp/OpenVINO)        | OpenVINO     | [Erlangga Yudi Pradana](https://github.com/rlggyp)                                                                                                                                                |
-| [YOLO MNN CPP](./cpp/MNN)                  | MNN          | [Khoi VN](https://github.com/vnk8071)                                                                                                                                                             |
-| [YOLO Triton CPP](./cpp/Triton)            | Triton       | [Ahmet Selim Demirel](https://github.com/asdemirel), [Doğan Mehmet Başoğlu](https://github.com/doganmb), [Enes Uzun](https://github.com/uzunenes), [Mevlüt Ardıç](https://github.com/mevlutardic) |
-
-### Python
-
-| Title                                                                                                           | Backend               | Contributor                                                                                                                                         |
-| --------------------------------------------------------------------------------------------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [YOLO OpenCV ONNX Detection](./YOLOv8-OpenCV-ONNX-Python)                                                       | OpenCV / ONNX         | [Farid Inawan](https://github.com/frdteknikelektro)                                                                                                 |
-| [YOLOv8 ONNX Runtime](./YOLOv8-ONNXRuntime)                                                                     | ONNX Runtime          | [Semih Demirel](https://github.com/semihhdemirel)                                                                                                   |
-| [RTDETR ONNX Runtime](./RTDETR-ONNXRuntime-Python)                                                              | ONNX Runtime          | [Semih Demirel](https://github.com/semihhdemirel)                                                                                                   |
-| [YOLOv8 Segmentation ONNX Runtime](./YOLOv8-Segmentation-ONNXRuntime-Python)                                    | ONNX Runtime          | [jamjamjon](https://github.com/jamjamjon)                                                                                                           |
-| [YOLO SAHI Video Inference](./YOLOv8-SAHI-Inference-Video)                                                      | SAHI                  | [Muhammad Rizwan Munawar](https://github.com/RizwanMunawar) ([See also SAHI Guide](https://docs.ultralytics.com/guides/sahi-tiled-inference))       |
-| [YOLO Region Counter](./YOLOv8-Region-Counter)                                                                  | Region Counting       | [Muhammad Rizwan Munawar](https://github.com/RizwanMunawar) ([See also Region Counting Guide](https://docs.ultralytics.com/guides/region-counting)) |
-| [YOLOv8 on NVIDIA Jetson (TensorRT and DeepStream)](https://wiki.seeedstudio.com/YOLOv8-DeepStream-TRT-Jetson/) | TensorRT / DeepStream | [Lakshantha](https://github.com/lakshanthad) ([See also DeepStream Guide](https://docs.ultralytics.com/guides/deepstream-nvidia-jetson))            |
-
-### Rust
-
-| Title                                                             | Backend      | Contributor                               |
-| ----------------------------------------------------------------- | ------------ | ----------------------------------------- |
-| [YOLOv8 All Tasks ONNX Runtime Rust](./YOLOv8-ONNXRuntime-Rust)   | ONNX Runtime | [jamjamjon](https://github.com/jamjamjon) |
-| [YOLOv5-YOLO11 ONNX Runtime Rust](./YOLO-Series-ONNXRuntime-Rust) | ONNX Runtime | [jamjamjon](https://github.com/jamjamjon) |
+## External Examples
 
 ### C# / .NET
 

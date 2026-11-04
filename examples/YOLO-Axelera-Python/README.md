@@ -29,47 +29,48 @@ pipeline = op.seq(
 poses = pipeline(frame)  # frame in, raw (N, 57) NumPy array out — drops straight into existing post-processing
 ```
 
-Note that this example returns the model's raw NumPy rows rather than typed
-`Results` objects — see the two examples below.
+## Pose and Tracking Example
 
-## Examples
+[`yolo26-pose-tracker.py`](./yolo26-pose-tracker.py) uses OpenCV for capture,
+drawing, and output. The model and optional tracker run through the Axelera
+pipeline. It uses a YOLO26 `nms=False` (NMS-free) pose export.
 
-The two examples take different approaches; pick whichever is closer to how you
-already work.
+| Mode | Pipeline output | Capture / render |
+| --- | --- | --- |
+| `--tracker none` | Raw NumPy pose rows | OpenCV capture and manual drawing |
+| `--tracker tracktrack` (default) | `TrackedObject` objects | OpenCV capture and manual drawing |
 
-`yolo26-pose-tracker.py` keeps OpenCV for capture, drawing, and post-processing, and
-only runs the model (and, optionally, a tracker) through Axelera. The pose-only
-pipeline returns the model's raw NumPy rows, so it slots into NumPy post-processing
-you already have. Uses a YOLO26 `nms=False` (NMS-free) export.
-
-`yolo11-seg.py` runs the whole pipeline through the runtime instead: hardware decode
-operators, typed `Results` objects, `cv.create_source()` for capture, and the
-`display.App` renderer, so there's no manual drawing code. Uses YOLO11 (its decode
-path is shared with YOLOv8).
-
-| Script                   | Task                       | Pipeline output                          | Capture / render                       |
-| ------------------------ | -------------------------- | ---------------------------------------- | -------------------------------------- |
-| `yolo26-pose-tracker.py` | Pose (+ optional tracking) | raw NumPy; `TrackedObject` when tracking | OpenCV `VideoCapture` + manual drawing |
-| `yolo11-seg.py`          | Instance segmentation      | typed `SegmentedObject`                  | `cv.create_source()` + `display.App`   |
-
-Tracking is the one runtime feature the first example opts into: `op.tracker()` needs
-typed objects, so the tracking path adds `op.ax_pose()` and yields `TrackedObject`;
-`--tracker none` skips that and stays raw NumPy.
+The tracking path adds `op.ax_pose()` before `op.tracker()` to convert raw poses
+into the typed objects required by the tracker. `--tracker none` skips both stages.
+The script runs without the `ultralytics` package once the model is compiled.
 
 ## Quick Start
 
 ### Install
 
-If you followed the
-[Axelera integration guide](../../docs/en/integrations/axelera.md), `axelera-rt`
-is already installed — running `yolo predict` or `yolo val` with an Axelera
-model auto-installs the runtime dependencies. If you need to install manually:
+Install the Axelera runtime explicitly before running the example. The version
+below matches `AXELERA_SDK` in this fork's
+[Axelera helper](../../ultralytics/utils/export/axelera.py):
 
 ```bash
-pip install axelera-rt==1.9.0 --no-cache-dir --extra-index-url https://software.axelera.ai/artifactory/api/pypi/axelera-pypi/simple
+python -m pip install axelera-rt==1.9.0 --no-cache-dir --extra-index-url https://software.axelera.ai/artifactory/api/pypi/axelera-pypi/simple
 ```
 
-You will also need `opencv-python` and `numpy` (likely already present).
+Model preparation also needs the Voyager compiler and its export dependencies.
+Install the compiler explicitly if it is not already available:
+
+```bash
+python -m pip install axelera-devkit==1.9.0 --extra-index-url https://software.axelera.ai/artifactory/api/pypi/axelera-pypi/simple
+```
+
+See the official [Axelera integration guide](https://docs.ultralytics.com/integrations/axelera)
+for platform, driver, and SDK setup. This fork disables dependency auto-install
+by default, so install any missing export or inference dependencies manually.
+
+Use NumPy and the OpenCV build provided by pyppbox or your environment. Showing
+a window requires OpenCV GUI support. Model preparation also needs your chosen
+PyTorch and torchvision builds; the standalone inference script does not import
+them.
 
 ### Compile
 
@@ -80,16 +81,14 @@ Ultralytics CLI:
 yolo export model=your-model.pt format=axelera
 ```
 
-To reproduce these examples, export the pretrained Ultralytics models:
+To prepare the pose model for this example's fixed 640-pixel preprocessing:
 
 ```bash
-yolo export model=yolo26n-pose.pt format=axelera
-yolo export model=yolo11n-seg.pt format=axelera
+yolo export model=yolo26n-pose.pt format=axelera imgsz=640 nms=False
 ```
 
-The compiled models are saved to `yolo26n-pose_axelera_model/` and
-`yolo11n-seg_axelera_model/` respectively. Pass the `.axm` file inside to
-`--model`.
+The compiled model is saved to `yolo26n-pose_axelera_model/`. Pass the `.axm`
+file inside that directory to `--model`.
 
 > [!NOTE]
 > Each model directory also contains `metadata.yaml` with the model's
@@ -119,40 +118,26 @@ python yolo26-pose-tracker.py --model yolo26n-pose.axm --source video.mp4       
 python yolo26-pose-tracker.py --model yolo26n-pose.axm --source 0 --tracker tracktrack # webcam with tracking
 ```
 
-#### Instance Segmentation (Ultralytics YOLO11)
+#### Headless Output
 
 ```bash
-python yolo11-seg.py --model yolo11n-seg.axm --source 0                              # webcam
-python yolo11-seg.py --model yolo11n-seg.axm --source video.mp4 --conf 0.3 --iou 0.5 # display
-python yolo11-seg.py --model yolo11n-seg.axm --source video.mp4 --output out.mp4     # display + save video
-python yolo11-seg.py --model yolo11n-seg.axm --source video.mp4 --no-display         # headless (no save)
+python yolo26-pose-tracker.py --model yolo26n-pose.axm --source video.mp4 --no-display --output tracked.mp4
 ```
 
-> [!NOTE]
-> `yolo11-seg.py` uses the runtime's `display.App` renderer and
-> `pipeline.stream()` instead of OpenCV display; results are drawn by the
-> built-in renderer with no manual drawing code. Use `--no-display` for headless
-> runs.
->
-> Saving video (`--output`) has two limitations from the display backend:
->
-> - It renders through the OpenCV display, so it requires a display and cannot
->   be combined with `--no-display`.
-> - The saved video is written at the display window's canvas size (`800x500`),
->   not the source's native resolution. Change the `create_window(...)` size in
->   the script to write at a different resolution.
+`--no-display` writes annotated frames to `--output`. With the default GUI mode,
+frames appear in an OpenCV window and `--output` is unused. Press `q`, `Q`, or
+Escape to stop the GUI run.
 
 ### Arguments
 
-| Argument       | Default             | Scripts   | Description                                                                                                                                                      |
-| -------------- | ------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--model`      | _required_          | all       | Path to compiled `.axm` model                                                                                                                                    |
-| `--source`     | `0` (pose)          | all       | Image path, video path, or webcam index. _Required_ for `yolo11-seg.py`.                                                                                         |
-| `--conf`       | `0.25`              | pose, seg | Confidence threshold                                                                                                                                             |
-| `--iou`        | `0.45`              | seg       | NMS IoU threshold                                                                                                                                                |
-| `--tracker`    | `tracktrack`        | pose      | Tracking algorithm: `bytetrack`, `oc-sort`, `sort`, `tracktrack`, `none`                                                                                         |
-| `--no-display` | _off_               | all       | Disable the GUI window (headless mode)                                                                                                                           |
-| `--output`     | `output.mp4` (pose) | pose, seg | Output video path. Pose: written in headless mode (`--no-display`). Seg: off by default; renders via the display app, so cannot be combined with `--no-display`. |
+| Argument | Default | Description |
+| --- | --- | --- |
+| `--model` | _required_ | Path to the compiled `.axm` pose model. |
+| `--source` | `0` | Image path, video path, or webcam index. |
+| `--conf` | `0.25` | Confidence threshold. |
+| `--tracker` | `tracktrack` | `bytetrack`, `oc-sort`, `sort`, `tracktrack`, or `none`. |
+| `--no-display` | _off_ | Disable the GUI and save annotated frames to `--output`. |
+| `--output` | `output.mp4` | Output video path used when `--no-display` is set. |
 
 ## What You'll See in the Code
 
@@ -181,51 +166,12 @@ This means they are fused, scheduled, and optimized alongside built-in ops like
 `op.letterbox` and the model itself — adding a custom filter carries no special
 overhead.
 
-### Video Sources (`cv.create_source`)
+### Capture, Drawing, and Output
 
-`cv.create_source(path)` opens a `VideoSource`: an iterable of decoded `Image` frames
-that also exposes metadata (`fps`, `frame_count`) and works as a context manager. The
-path can be a video file, a folder of images, a USB camera (`/dev/video0`), or an
-RTSP/RTP/RTMP/SRT URL — live sources drop frames to stay real-time, while files block
-so none are skipped. Hand the source straight to `pipeline.stream()` to get pipelined
-`(image, result)` pairs in source order:
-
-```python
-from axelera.runtime import cv
-
-with cv.create_source("clip.mp4") as source:
-    print(source.fps, source.frame_count)  # available before iterating
-    for image, segments in pipeline.stream(source):
-        ...
-```
-
-`backend` (`"ffmpeg"` default, or `"opencv"`), `buffer_size`, and `live_source` are
-available when you need to tune decoding. `yolo11-seg.py` uses this for capture.
-
-### Rendering (`display.App`)
-
-`display.App(renderer=...)` runs the built-in renderer as a context manager:
-`"auto"` opens an OpenCV window when a display is available (and falls back to console
-output otherwise), `"none"` disables rendering for headless runs. Create a window with
-`create_window(title, size)` and push frames with `vis(image, result)` — typed
-`Results` objects render themselves via their `.draw()` method, so masks, boxes, poses,
-and tracks are drawn with no manual OpenCV code:
-
-```python
-from axelera.runtime import cv, display
-
-with display.App(renderer="auto") as app:
-    vis = app.create_window("segmentation", (800, 500))
-    with cv.create_source("clip.mp4") as source:
-        for image, segments in pipeline.stream(source):
-            if vis.is_closed:  # window closed by the user
-                break
-            vis(image, segments)  # SegmentedObject.draw() paints masks + boxes
-```
-
-Pass `expose_surface=True` to `create_window()` to enable `vis.save_output_video(path,
-fps)` for recording (OpenCV renderer only). `yolo11-seg.py` uses this for display and
-`--output`.
+The script reads frames with `cv2.VideoCapture`, runs `pipeline(frame)`, and draws
+the returned poses with `draw_pose()` or `draw_tracked_poses()`. It displays frames
+with `cv2.imshow()` in GUI mode and writes them with `cv2.VideoWriter` in headless
+mode. Capture and rendering stay in OpenCV for both pose-only and tracking runs.
 
 ### Multi-Object Tracking
 

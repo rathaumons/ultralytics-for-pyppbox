@@ -10,12 +10,9 @@ Exported with nms=False, YOLO26 is NMS-free: the model outputs (1, 300, 57) alre
 We use a small ConfidenceFilter operator instead of decode_pose (which only
 supports yolov8/yolo11 raw output layout).
 
-This is the "drop-in" example (see README.md for the two-pathway design): frame
-ingestion and rendering use plain OpenCV, and only the model -- plus, optionally, a
+Frame ingestion and rendering use plain OpenCV, and only the model -- plus, optionally, a
 tracker -- runs through the Axelera pipeline builder. The pose-only path returns the
 model's raw NumPy output so it drops straight into existing NumPy post-processing.
-See yolo11-seg.py for the complementary "E2E ecosystem" pathway (typed Results
-objects, cv.create_source, and the display.App renderer).
 
 When --tracker is set (default: tracktrack), the pipeline appends op.ax_pose() +
 op.tracker() for multi-object tracking. Use --tracker none to disable tracking.

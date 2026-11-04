@@ -15,6 +15,7 @@ import lapcpp
 import numpy as np
 import torch
 
+from ultralytics.nn.tasks import _SafeLoad
 from ultralytics.trackers.utils.matching import linear_assignment
 from ultralytics.utils.ops import linear_sum_assignment
 
@@ -230,7 +231,6 @@ class InferenceImportTests(unittest.TestCase):
             import numpy as np
             import torch
             from ultralytics import YOLO
-            from ultralytics.nn.tasks import torch_safe_load
             from ultralytics.utils import ROOT
 
             image = np.zeros((64, 64, 3), dtype=np.uint8)
@@ -242,8 +242,6 @@ class InferenceImportTests(unittest.TestCase):
                 with TemporaryDirectory() as checkpoint_dir:
                     checkpoint = Path(checkpoint_dir) / (task + '.pt')
                     model.save(checkpoint)
-                    safe_checkpoint, _ = torch_safe_load(checkpoint, safe_only=True)
-                    assert isinstance(safe_checkpoint['model'], type(model.model))
                     model = YOLO(checkpoint, verbose=False)
                 result, = model.predict(image, imgsz=64, device='cpu', save=False, verbose=False)
                 assert model.task == task and result.orig_shape == image.shape[:2]
@@ -258,6 +256,38 @@ class InferenceImportTests(unittest.TestCase):
                     tracked, = model.track(image, imgsz=64, device='cpu', save=False,
                                            verbose=False, tracker='bytetrack.yaml', persist=True)
                     assert tracked.boxes is not None and len(model.predictor.trackers) == 1
+        """)
+
+    @unittest.skipUnless(_SafeLoad.SUPPORTED, 'Restricted checkpoint loading requires Torch 2.6+ (_SafeLoad.SUPPORTED)')
+    def test_restricted_checkpoint_loading_uses_real_weights_only_unpickling(self):
+        self.run_without_optional_modules("""
+            from pathlib import Path
+            from tempfile import TemporaryDirectory
+            from unittest.mock import patch
+            import torch
+            from ultralytics import YOLO
+            from ultralytics.nn import tasks
+            from ultralytics.utils import ROOT
+
+            assert tasks._SafeLoad.SUPPORTED, 'Restricted loading unavailable in the child process'
+            for task, filename in (
+                ('detect', 'yolov8.yaml'), ('pose', 'yolov8-pose.yaml'),
+                ('classify', 'yolov8-cls.yaml'),
+            ):
+                model = YOLO(ROOT / 'cfg/models/v8' / filename, verbose=False)
+                with TemporaryDirectory() as checkpoint_dir:
+                    checkpoint = Path(checkpoint_dir) / (task + '.pt')
+                    model.save(checkpoint)
+                    with patch.object(tasks._SafeLoad, 'register', wraps=tasks._SafeLoad.register) as register:
+                        with patch.object(tasks, 'torch_load', wraps=tasks.torch_load) as load:
+                            loaded, loaded_file = tasks.torch_safe_load(checkpoint, safe_only=True)
+                    register.assert_called_once_with(loaded_file)
+                    load.assert_called_once()
+                    assert load.call_args.kwargs.get('weights_only') is True
+                    assert isinstance(loaded['model'], type(model.model))
+                    actual_state = loaded['model'].state_dict()
+                    for name, expected in model.model.state_dict().items():
+                        assert torch.equal(actual_state[name], expected.to(actual_state[name].dtype)), name
         """)
 
     def test_all_trackers_and_native_reid_work_without_training_imports(self):

@@ -242,11 +242,20 @@ python -m unittest discover -s tests -p test_assignment.py -v
 ```
 
 This suite checks assignment invariants; lazy imports and custom task maps;
-normal/restricted `.pt` round trips for locally constructed YOLOv8 detection,
+normal `.pt` round trips for locally constructed YOLOv8 detection,
 pose, and classification models; CPU prediction, embeddings, and tracking; all
 six trackers with synthetic detections/native ReID; format recognition and error
 paths; actual TorchScript inference/ReID; dependency absence; installation opt-in;
 and OpenCV thread preservation.
+
+Restricted `.pt` loading has a separate capability-gated test. It runs only when
+`_SafeLoad.SUPPORTED` is true (Torch 2.6+), verifies that the real loader registers
+checkpoint globals and passes `weights_only=True`, and checks the reconstructed
+model weights under the import boundary. Older Torch versions, including 2.5.1,
+skip this test; their standard-loading fallback does not establish restricted
+loading coverage. Record the Torch version and skipped checks in validation
+results, and run the test on a supported version before claiming that restricted
+loading has been verified.
 
 Also run pyppbox's `tests/integration/test_yolo_results.py` against this fork. Its
 CPU/NumPy/CUDA `Results` adapter checks verify result handling, not GPU model
