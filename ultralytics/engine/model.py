@@ -728,8 +728,7 @@ class Model(torch.nn.Module):
         """
         self._check_is_pytorch_model()
         from ultralytics.utils.benchmarks import benchmark
-
-        from .exporter import export_formats
+        from ultralytics.utils.formats import export_formats
 
         custom = {"verbose": False, "nms": None}  # method defaults
         kwargs = _handle_deprecation(kwargs)  # forward legacy flags (e.g. half/int8 -> quantize) before merging

@@ -50,7 +50,6 @@ import torch.cuda
 from ultralytics import RTDETR, YOLO, YOLOE, YOLOWorld
 from ultralytics.cfg import TASK2DATA, TASK2METRIC
 from ultralytics.data.utils import check_det_dataset, convert_ndjson_to_yolo_if_needed
-from ultralytics.engine.exporter import export_formats
 from ultralytics.utils import (
     ARM64,
     ASSETS,
@@ -65,6 +64,7 @@ from ultralytics.utils import (
 )
 from ultralytics.utils.checks import IS_PYTHON_MINIMUM_3_13, check_imgsz, check_yolo, is_rockchip
 from ultralytics.utils.files import file_size
+from ultralytics.utils.formats import export_formats
 from ultralytics.utils.torch_utils import get_cpu_info, select_device
 
 

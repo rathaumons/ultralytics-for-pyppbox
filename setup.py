@@ -1,5 +1,5 @@
 from pathlib import Path
-from setuptools import setup
+from setuptools import find_packages, setup
 
 # Settings
 FILE = Path(__file__).resolve()
@@ -53,19 +53,38 @@ setup(
     url='https://github.com/rathaumons/ultralytics-for-pyppbox',
     project_urls={'Bug Reports': 'https://github.com/rathaumons/ultralytics-for-pyppbox/issues',
                   'Source': 'https://github.com/rathaumons/ultralytics-for-pyppbox'},
-    packages=['ultralytics'] + [str(x) for x in Path('ultralytics').rglob('*/') if x.is_dir() and '__' not in str(x)],
-    package_data={'ultralytics': ['**/*.yaml', '**/*.sh', '../tests/*.py'], 'ultralytics.assets': ['*.jpg'], 'ultralytics.solutions.templates': ['*.html']},
-    include_package_data=True,
+    packages=find_packages(include=('ultralytics', 'ultralytics.*')),
+    package_data={
+        'ultralytics': ['py.typed', '**/*.yaml', '**/*.sh', 'assets/*.jpg', 'solutions/templates/*.html'],
+    },
+    include_package_data=False,
     install_requires=parse_requirements(PARENT / 'requirements.txt'),
     extras_require={
+        'plotting': [
+            "matplotlib>=3.3.0",
+            "polars>=0.20.0",
+        ],
+        'tables': [
+            "polars>=0.20.0",
+        ],
+        'profiling': [
+            "ultralytics-thop>=2.2.4",
+        ],
+        'diagnostics': [
+            "psutil>=5.8.0",
+        ],
         'solutions': [
             "shapely>=2.0.0",  # shapely for point and polygon data matching
-            # CLIP for similarity search auto-installs on first use via ultralytics.nn.text_model (https://github.com/ultralytics/CLIP)
+            "matplotlib>=3.3.0",  # solution analytics charts
+            # CLIP for similarity search requires explicit installation (https://github.com/ultralytics/CLIP).
             "streamlit>=1.51.0; python_version >= '3.10'",  # for live inference on web browser, i.e `yolo streamlit-predict`
             "streamlit>=1.29.0,<1.51.0; python_version < '3.10' and (platform_machine != 'aarch64' or platform_system != 'Linux')",
             "flask>=3.0.1",  # for similarity search solution
         ],
         'logging': [
+            "matplotlib>=3.3.0",
+            "polars>=0.20.0",
+            "psutil>=5.8.0",
             "wandb",  # https://docs.ultralytics.com/integrations/weights-biases
             "tensorboard",  # https://docs.ultralytics.com/integrations/tensorboard
             "mlflow",  # https://docs.ultralytics.com/integrations/mlflow
@@ -73,7 +92,6 @@ setup(
         'typing': [
             "types-pillow",
             "types-psutil",
-            "types-pyyaml",
             "types-requests",
             "types-shapely",
         ]

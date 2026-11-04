@@ -141,10 +141,14 @@ class TrackingAssignmentTests(unittest.TestCase):
 class InferenceImportTests(unittest.TestCase):
     """Inference and tracking must work when optional training/model modules are unavailable."""
 
-    def run_without_optional_modules(self, code):
+    def run_without_optional_modules(self, code, env_overrides=None, unset_env=()):
         guard = """
             import sys
             from importlib.abc import MetaPathFinder
+
+            def optional_dependency(name):
+                roots = ('hub_sdk', 'thop', 'polars', 'matplotlib', 'psutil', 'yaml')
+                return any(name == root or name.startswith(root + '.') for root in roots)
 
             def forbidden(name):
                 roots = (
@@ -156,13 +160,16 @@ class InferenceImportTests(unittest.TestCase):
                     'ultralytics.models.sam',
                 )
                 return (
-                    any(name == root or name.startswith(root + '.') for root in roots)
+                    optional_dependency(name)
+                    or any(name == root or name.startswith(root + '.') for root in roots)
                     or (name.startswith('ultralytics.models.')
                         and name.rsplit('.', 1)[-1] in ('train', 'train_seg', 'train_world', 'val'))
                 )
 
             class ImportBoundary(MetaPathFinder):
                 def find_spec(self, fullname, path=None, target=None):
+                    if optional_dependency(fullname):
+                        raise ModuleNotFoundError('Optional dependency unavailable: ' + fullname, name=fullname)
                     if forbidden(fullname):
                         raise AssertionError('Inference imported optional module: ' + fullname)
 
@@ -172,6 +179,9 @@ class InferenceImportTests(unittest.TestCase):
         with TemporaryDirectory() as config_dir:
             env = dict(os.environ, YOLO_AUTOINSTALL="false", YOLO_OFFLINE="true",
                        YOLO_CONFIG_DIR=config_dir, PYTHONIOENCODING="utf-8")
+            for name in unset_env:
+                env.pop(name, None)
+            env.update(env_overrides or {})
             result = subprocess.run(
                 [sys.executable, "-c", textwrap.dedent(guard) + textwrap.dedent(code) + check],
                 cwd=Path(__file__).resolve().parents[1], env=env, capture_output=True,
@@ -277,6 +287,131 @@ class InferenceImportTests(unittest.TestCase):
                     assert tracker.tracked_stracks[0].smooth_feat is not None
                 tracker.update(Boxes(np.empty((0, 6), dtype=np.float32), image.shape[:2]), img=image)
         """)
+
+    def test_backend_format_recognition_and_errors_do_not_import_exporter(self):
+        self.run_without_optional_modules("""
+            from pathlib import Path
+            from ultralytics.nn.autobackend import AutoBackend
+            from ultralytics.utils.formats import export_formats
+
+            suffixes = (
+                ('.pt', 'pt'), ('.torchscript', 'torchscript'), ('.onnx', 'onnx'),
+                ('_openvino_model', 'openvino'), ('.engine', 'engine'),
+                ('.mlpackage', 'coreml'), ('.aimodel', 'coreai'),
+                ('_saved_model', 'saved_model'), ('.pb', 'pb'),
+                ('_edgetpu.tflite', 'edgetpu'), ('.tflite', 'litert'),
+                ('_paddle_model', 'paddle'), ('.mnn', 'mnn'), ('_ncnn_model', 'ncnn'),
+                ('_imx_model', 'imx'), ('_rknn_model', 'rknn'),
+                ('_executorch_model', 'executorch'), ('_axelera_model', 'axelera'),
+                ('_deepx_model', 'deepx'), ('_qnn.onnx', 'qnn'),
+                ('_hailo_model', 'hailo'), ('_ascend_model', 'ascend'),
+                ('_xilinx_model', 'xilinx'),
+            )
+            formats = export_formats()
+            assert tuple(formats) == ('Format', 'Argument', 'Suffix', 'CPU', 'GPU', 'Arguments', 'Env')
+            assert tuple(formats['Suffix']) == tuple(suffix for suffix, _ in suffixes)
+            assert all(len(values) == len(suffixes) for values in formats.values())
+            for suffix, expected in suffixes:
+                assert AutoBackend._model_type('nested/folder/model' + suffix) == expected
+                assert AutoBackend._model_type(Path('nested/folder/model' + suffix)) == expected
+                if suffix.endswith('_model'):
+                    assert AutoBackend._model_type('nested/model' + suffix + '/') == expected
+            for path, expected in (
+                ('best.pt.onnx', 'onnx'), ('best.onnx.pt', 'pt'),
+                ('best_qnn.onnx', 'qnn'), ('best_edgetpu.tflite', 'edgetpu'),
+                ('best.mlmodel', 'coreml'), ('BEST.ONNX', 'onnx'),
+                ('parent.onnx/model.pt', 'pt'), ('parent.onnx/unknown', None),
+                ('http://localhost:8000/model', 'triton'),
+                ('grpc://localhost:8001/model', 'triton'),
+                ('https://localhost/model', None), ('http://localhost', None),
+            ):
+                assert AutoBackend._model_type(path) == expected, (path, expected)
+            assert AutoBackend._model_type('model.onnx', dnn=True) == 'dnn'
+            assert AutoBackend._model_type('model_qnn.onnx', dnn=True) == 'qnn'
+            assert AutoBackend._model_type('unsupported.invalid') is None
+            try:
+                AutoBackend._model_type(Path('unsupported.invalid'))
+            except AssertionError:
+                pass
+            else:
+                raise AssertionError('Path suffix validation was bypassed')
+            try:
+                AutoBackend('unsupported.invalid', device='cpu', verbose=False)
+            except TypeError as error:
+                assert 'not a supported model format' in str(error)
+                assert 'PyTorch' in str(error) and 'ONNX' in str(error)
+            else:
+                raise AssertionError('Unsupported model format was accepted')
+        """)
+
+    def test_torchscript_backend_and_exported_reid_do_not_import_exporter(self):
+        self.run_without_optional_modules("""
+            import json
+            from pathlib import Path
+            from tempfile import TemporaryDirectory
+            import numpy as np
+            import torch
+            from ultralytics.nn.autobackend import AutoBackend
+            from ultralytics.trackers.utils.reid import ReID
+
+            class Embedding(torch.nn.Module):
+                def forward(self, image):
+                    return image.mean(dim=(2, 3))
+
+            with TemporaryDirectory() as directory:
+                path = Path(directory) / 'embedding.torchscript'
+                traced = torch.jit.trace(Embedding().eval(), torch.zeros(1, 3, 32, 32))
+                metadata = {'stride': 32, 'batch': 1, 'imgsz': [32, 32],
+                            'names': {0: 'embedding'}, 'task': 'classify',
+                            'args': {'dynamic': True}}
+                torch.jit.save(traced, str(path), _extra_files={'config.txt': json.dumps(metadata)})
+                backend = AutoBackend(path, device=torch.device('cpu'), verbose=False)
+                output = backend(torch.full((2, 3, 32, 32), .5))
+                torch.testing.assert_close(output, torch.full((2, 3), .5))
+                encoder = ReID(str(path), imgsz=32, device='cpu')
+                image = np.full((64, 64, 3), (10, 20, 30), dtype=np.uint8)
+                detections = np.array([[16, 16, 12, 12, 0], [40, 40, 8, 8, 0]], dtype=np.float32)
+                features = encoder(image, detections)
+                assert len(features) == 2
+                for feature in features:
+                    np.testing.assert_allclose(feature, np.array([30, 20, 10]) / 255., rtol=1e-6)
+        """)
+
+    def test_default_import_preserves_opencv_threads_and_never_installs(self):
+        self.run_without_optional_modules("""
+            import cv2
+            from importlib.metadata import PackageNotFoundError
+            from unittest.mock import patch
+
+            cv2.setNumThreads(3)
+            selected_threads = cv2.getNumThreads()
+            import ultralytics
+            from ultralytics.utils import AUTOINSTALL
+            from ultralytics.utils import checks
+
+            assert AUTOINSTALL is False
+            assert cv2.getNumThreads() == selected_threads
+            with patch.object(checks.metadata, 'version', side_effect=PackageNotFoundError('missing')):
+                with patch.object(checks, 'ONLINE', True), patch.object(checks.subprocess, 'check_output') as install:
+                    assert checks.check_requirements('pyppbox-test-missing-dependency>=1') is False
+                    install.assert_not_called()
+        """, unset_env=('YOLO_AUTOINSTALL', 'ULTRALYTICS_SKIP_REQUIREMENTS_CHECKS'))
+
+    def test_dependency_installation_remains_explicitly_opt_in(self):
+        self.run_without_optional_modules("""
+            from importlib.metadata import PackageNotFoundError
+            from unittest.mock import patch
+            from ultralytics.utils import AUTOINSTALL
+            from ultralytics.utils import checks
+
+            assert AUTOINSTALL is True
+            with patch.object(checks.metadata, 'version', side_effect=PackageNotFoundError('missing')):
+                with patch.object(checks, 'ONLINE', True), patch.object(checks, 'check_uv', return_value=False):
+                    with patch.object(checks.subprocess, 'check_output', return_value='simulated install') as install:
+                        assert checks.check_requirements('pyppbox-test-missing-dependency>=1') is True
+                        install.assert_called_once()
+        """, env_overrides={'YOLO_AUTOINSTALL': 'true'},
+           unset_env=('ULTRALYTICS_SKIP_REQUIREMENTS_CHECKS',))
 
 
 if __name__ == "__main__":

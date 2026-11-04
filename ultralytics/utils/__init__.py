@@ -78,7 +78,7 @@ REQUEST_HEADERS = {"User-Agent": f"ultralytics/{__version__} (https://ultralytic
 PLATFORM_URL = os.getenv("ULTRALYTICS_PLATFORM_URL", "https://platform.ultralytics.com").rstrip("/")
 DEFAULT_CFG_PATH = ROOT / "cfg/default.yaml"
 NUM_THREADS = min(8, max(1, os.cpu_count() - 1))  # number of YOLO multiprocessing threads
-AUTOINSTALL = env_bool("YOLO_AUTOINSTALL", True)  # global auto-install mode
+AUTOINSTALL = env_bool("YOLO_AUTOINSTALL", False)  # opt in explicitly to dependency auto-install
 VERBOSE = env_bool("YOLO_VERBOSE", True)  # global verbose mode
 SAFE_LOAD = env_bool("ULTRALYTICS_SAFE_LOAD")  # opt-in weights_only model loading
 LOGGING_NAME = "ultralytics"
@@ -183,7 +183,6 @@ HELP_MSG = """
 # Settings and Environment Variables
 torch.set_printoptions(linewidth=320, precision=4, profile="default")
 np.set_printoptions(linewidth=320, formatter={"float_kind": "{:11.5g}".format})  # format short g, %precision=5
-cv2.setNumThreads(0)  # prevent OpenCV from multithreading (incompatible with PyTorch DataLoader)
 os.environ["NUMEXPR_MAX_THREADS"] = str(NUM_THREADS)  # NumExpr max threads
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # suppress verbose TF compiler warnings in Colab
 os.environ["TORCH_CPP_LOG_LEVEL"] = "ERROR"  # suppress "NNPACK.cpp could not initialize NNPACK" warnings

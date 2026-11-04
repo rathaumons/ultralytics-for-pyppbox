@@ -235,7 +235,7 @@ class AutoBackend(nn.Module):
         backend_kwargs = {"device": device, "fp16": fp16}
 
         if format not in self._BACKEND_MAP:
-            from ultralytics.engine.exporter import export_formats
+            from ultralytics.utils.formats import export_formats
 
             raise TypeError(
                 f"model='{model}' is not a supported model format. "
@@ -404,7 +404,7 @@ class AutoBackend(nn.Module):
             >>> fmt = AutoBackend._model_type("path/to/model.onnx")
             >>> assert fmt == "onnx"
         """
-        from ultralytics.engine.exporter import export_formats
+        from ultralytics.utils.formats import export_formats
 
         sf = export_formats()["Suffix"]
         if not is_url(p) and not isinstance(p, str):
