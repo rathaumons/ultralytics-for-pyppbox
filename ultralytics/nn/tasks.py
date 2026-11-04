@@ -91,18 +91,6 @@ from ultralytics.utils import (
     emojis,
 )
 from ultralytics.utils.checks import REMOTE_FILE_PREFIXES, check_file, check_requirements, check_suffix, check_yaml
-from ultralytics.utils.loss import (
-    DepthLoss26,
-    E2ELoss,
-    PoseLoss26,
-    SegmentLoss26,
-    SemanticSegmentationLoss,
-    v8ClassificationLoss,
-    v8DetectionLoss,
-    v8OBBLoss,
-    v8PoseLoss,
-    v8SegmentationLoss,
-)
 from ultralytics.utils.ops import make_divisible
 from ultralytics.utils.patches import torch_load
 from ultralytics.utils.torch_utils import (
@@ -650,6 +638,8 @@ class DetectionModel(BaseModel):
 
     def init_criterion(self):
         """Initialize the loss criterion for the DetectionModel."""
+        from ultralytics.utils.loss import E2ELoss, v8DetectionLoss
+
         return E2ELoss(self) if getattr(self.model[-1], "one2one_cv2", None) is not None else v8DetectionLoss(self)
 
 
@@ -682,6 +672,8 @@ class OBBModel(DetectionModel):
 
     def init_criterion(self):
         """Initialize the loss criterion for the model."""
+        from ultralytics.utils.loss import E2ELoss, v8OBBLoss
+
         return E2ELoss(self, v8OBBLoss) if getattr(self.model[-1], "one2one_cv2", None) is not None else v8OBBLoss(self)
 
 
@@ -714,6 +706,8 @@ class SegmentationModel(DetectionModel):
 
     def init_criterion(self):
         """Initialize the loss criterion for the SegmentationModel."""
+        from ultralytics.utils.loss import E2ELoss, SegmentLoss26, v8SegmentationLoss
+
         loss = SegmentLoss26 if isinstance(self.model[-1], Segment26) else v8SegmentationLoss
         return E2ELoss(self, loss) if getattr(self.model[-1], "one2one_cv2", None) is not None else loss(self)
 
@@ -779,6 +773,8 @@ class SemanticSegmentationModel(BaseModel):
 
     def init_criterion(self):
         """Initialize the loss criterion for semantic segmentation."""
+        from ultralytics.utils.loss import SemanticSegmentationLoss
+
         return SemanticSegmentationLoss(self)
 
     def _apply(self, fn):
@@ -829,6 +825,8 @@ class PoseModel(DetectionModel):
 
     def init_criterion(self):
         """Initialize the loss criterion for the PoseModel."""
+        from ultralytics.utils.loss import E2ELoss, PoseLoss26, v8PoseLoss
+
         loss = PoseLoss26 if isinstance(self.model[-1], Pose26) else v8PoseLoss
         return E2ELoss(self, loss) if getattr(self.model[-1], "one2one_cv2", None) is not None else loss(self)
 
@@ -857,6 +855,8 @@ class DepthModel(DetectionModel):
 
     def init_criterion(self):
         """Initialize the depth loss criterion."""
+        from ultralytics.utils.loss import DepthLoss26
+
         return DepthLoss26(self)
 
 
@@ -949,6 +949,8 @@ class ClassificationModel(BaseModel):
 
     def init_criterion(self):
         """Initialize the loss criterion for the ClassificationModel."""
+        from ultralytics.utils.loss import v8ClassificationLoss
+
         return v8ClassificationLoss()
 
 
@@ -1508,7 +1510,7 @@ class YOLOEModel(DetectionModel):
             loss_items (dict[str, torch.Tensor]): Detached loss components, as returned by the criterion.
         """
         if getattr(self, "criterion", None) is None:
-            from ultralytics.utils.loss import TVPDetectLoss
+            from ultralytics.utils.loss import E2ELoss, TVPDetectLoss
 
             visual_prompt = batch.get("visuals", None) is not None  # TODO
             self.criterion = (
@@ -1568,7 +1570,7 @@ class YOLOESegModel(YOLOEModel, SegmentationModel):
             loss_items (dict[str, torch.Tensor]): Detached loss components, as returned by the criterion.
         """
         if getattr(self, "criterion", None) is None:
-            from ultralytics.utils.loss import TVPSegmentLoss
+            from ultralytics.utils.loss import E2ELoss, TVPSegmentLoss
 
             visual_prompt = batch.get("visuals", None) is not None  # TODO
             self.criterion = (
@@ -1821,8 +1823,6 @@ class _SafeLoad:
         import enum
         import pathlib
 
-        import ultralytics.utils.loss as ul_loss
-
         allow = []
 
         # Non-nn.Module data globals in official checkpoints, incl. the pre-8.0.44 `ultralytics.yolo.utils` path.
@@ -1844,7 +1844,6 @@ class _SafeLoad:
         allow += [
             (nn.Identity, "ultralytics.nn.modules.block.Silence"),  # YOLOv9e
             (DetectionModel, "ultralytics.nn.tasks.YOLOv10DetectionModel"),  # YOLOv10
-            (ul_loss.E2EDetectLoss, "ultralytics.utils.loss.v10DetectLoss"),  # YOLOv10
             (_getattr, "builtins.getattr"),  # non-det YOLOv8, YOLO11 ckpts (restrict to nn.Module attrs)
         ]
         # Map either OS's pickled path to the local class; Python 3.13 pickles name them under `pathlib._local`.
@@ -1898,7 +1897,6 @@ def torch_safe_load(weight, safe_only=None):
             attributes={
                 "ultralytics.nn.modules.block.Silence": "torch.nn.Identity",  # YOLOv9e
                 "ultralytics.nn.tasks.YOLOv10DetectionModel": "ultralytics.nn.tasks.DetectionModel",  # YOLOv10
-                "ultralytics.utils.loss.v10DetectLoss": "ultralytics.utils.loss.E2EDetectLoss",  # YOLOv10
                 # resolve cross-platform pathlib pickle incompatibility
                 **(
                     {"pathlib.PosixPath": "pathlib.WindowsPath"}

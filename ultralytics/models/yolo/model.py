@@ -9,7 +9,6 @@ import numpy as np
 import torch
 
 from ultralytics.cfg import _handle_deprecation, get_cfg
-from ultralytics.data.build import load_inference_source
 from ultralytics.engine.model import PREDICTOR_SETUP_KEYS, Model
 from ultralytics.models import yolo
 from ultralytics.nn.autobackend import check_class_names
@@ -97,50 +96,50 @@ class YOLO(Model):
                 self.__dict__ = new_instance.__dict__
 
     @property
-    def task_map(self) -> dict[str, dict[str, Any]]:
+    def _task_map(self) -> dict[str, dict[str, Any]]:
         """Map head to model, trainer, validator, and predictor classes."""
         return {
             "classify": {
                 "model": ClassificationModel,
-                "trainer": yolo.classify.ClassificationTrainer,
-                "validator": yolo.classify.ClassificationValidator,
-                "predictor": yolo.classify.ClassificationPredictor,
+                "trainer": "ultralytics.models.yolo.classify.ClassificationTrainer",
+                "validator": "ultralytics.models.yolo.classify.ClassificationValidator",
+                "predictor": "ultralytics.models.yolo.classify.ClassificationPredictor",
             },
             "detect": {
                 "model": DetectionModel,
-                "trainer": yolo.detect.DetectionTrainer,
-                "validator": yolo.detect.DetectionValidator,
-                "predictor": yolo.detect.DetectionPredictor,
+                "trainer": "ultralytics.models.yolo.detect.DetectionTrainer",
+                "validator": "ultralytics.models.yolo.detect.DetectionValidator",
+                "predictor": "ultralytics.models.yolo.detect.DetectionPredictor",
             },
             "segment": {
                 "model": SegmentationModel,
-                "trainer": yolo.segment.SegmentationTrainer,
-                "validator": yolo.segment.SegmentationValidator,
-                "predictor": yolo.segment.SegmentationPredictor,
+                "trainer": "ultralytics.models.yolo.segment.SegmentationTrainer",
+                "validator": "ultralytics.models.yolo.segment.SegmentationValidator",
+                "predictor": "ultralytics.models.yolo.segment.SegmentationPredictor",
             },
             "pose": {
                 "model": PoseModel,
-                "trainer": yolo.pose.PoseTrainer,
-                "validator": yolo.pose.PoseValidator,
-                "predictor": yolo.pose.PosePredictor,
+                "trainer": "ultralytics.models.yolo.pose.PoseTrainer",
+                "validator": "ultralytics.models.yolo.pose.PoseValidator",
+                "predictor": "ultralytics.models.yolo.pose.PosePredictor",
             },
             "obb": {
                 "model": OBBModel,
-                "trainer": yolo.obb.OBBTrainer,
-                "validator": yolo.obb.OBBValidator,
-                "predictor": yolo.obb.OBBPredictor,
+                "trainer": "ultralytics.models.yolo.obb.OBBTrainer",
+                "validator": "ultralytics.models.yolo.obb.OBBValidator",
+                "predictor": "ultralytics.models.yolo.obb.OBBPredictor",
             },
             "depth": {
                 "model": DepthModel,
-                "trainer": yolo.depth.DepthTrainer,
-                "validator": yolo.depth.DepthValidator,
-                "predictor": yolo.depth.DepthPredictor,
+                "trainer": "ultralytics.models.yolo.depth.DepthTrainer",
+                "validator": "ultralytics.models.yolo.depth.DepthValidator",
+                "predictor": "ultralytics.models.yolo.depth.DepthPredictor",
             },
             "semantic": {
                 "model": SemanticSegmentationModel,
-                "trainer": yolo.semantic.SemanticSegmentationTrainer,
-                "validator": yolo.semantic.SemanticSegmentationValidator,
-                "predictor": yolo.semantic.SemanticSegmentationPredictor,
+                "trainer": "ultralytics.models.yolo.semantic.SemanticSegmentationTrainer",
+                "validator": "ultralytics.models.yolo.semantic.SemanticSegmentationValidator",
+                "predictor": "ultralytics.models.yolo.semantic.SemanticSegmentationPredictor",
             },
         }
 
@@ -188,14 +187,14 @@ class YOLOWorld(Model):
             self.model.names = YAML.load(ROOT / "cfg/datasets/coco8.yaml").get("names")
 
     @property
-    def task_map(self) -> dict[str, dict[str, Any]]:
+    def _task_map(self) -> dict[str, dict[str, Any]]:
         """Map head to model, trainer, validator, and predictor classes."""
         return {
             "detect": {
                 "model": WorldModel,
-                "validator": yolo.world.WorldValidator,
-                "predictor": yolo.detect.DetectionPredictor,
-                "trainer": yolo.world.WorldTrainer,
+                "validator": "ultralytics.models.yolo.world.WorldValidator",
+                "predictor": "ultralytics.models.yolo.detect.DetectionPredictor",
+                "trainer": "ultralytics.models.yolo.world.WorldTrainer",
             }
         }
 
@@ -261,20 +260,20 @@ class YOLOE(Model):
         super().__init__(model=model, task=task, verbose=verbose)
 
     @property
-    def task_map(self) -> dict[str, dict[str, Any]]:
+    def _task_map(self) -> dict[str, dict[str, Any]]:
         """Map head to model, trainer, validator, and predictor classes."""
         return {
             "detect": {
                 "model": YOLOEModel,
-                "validator": yolo.yoloe.YOLOEDetectValidator,
-                "predictor": yolo.detect.DetectionPredictor,
-                "trainer": yolo.yoloe.YOLOETrainer,
+                "validator": "ultralytics.models.yolo.yoloe.YOLOEDetectValidator",
+                "predictor": "ultralytics.models.yolo.detect.DetectionPredictor",
+                "trainer": "ultralytics.models.yolo.yoloe.YOLOETrainer",
             },
             "segment": {
                 "model": YOLOESegModel,
-                "validator": yolo.yoloe.YOLOESegValidator,
-                "predictor": yolo.segment.SegmentationPredictor,
-                "trainer": yolo.yoloe.YOLOESegTrainer,
+                "validator": "ultralytics.models.yolo.yoloe.YOLOESegValidator",
+                "predictor": "ultralytics.models.yolo.segment.SegmentationPredictor",
+                "trainer": "ultralytics.models.yolo.yoloe.YOLOESegTrainer",
             },
         }
 
@@ -552,6 +551,8 @@ class YOLOE(Model):
             self.predictor.model.names = {i: f"object{i}" for i in range(num_cls)}  # predictor-scoped prompt classes
 
             if refer_image is None and source is not None:
+                from ultralytics.data.build import load_inference_source
+
                 dataset = load_inference_source(source)
                 if dataset.mode in {"video", "stream"}:
                     # NOTE: set the first frame as refer image for videos/streams inference

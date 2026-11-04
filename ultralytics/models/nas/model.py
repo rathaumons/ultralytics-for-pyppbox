@@ -15,9 +15,6 @@ from ultralytics.utils.downloads import attempt_download_asset
 from ultralytics.utils.patches import torch_load
 from ultralytics.utils.torch_utils import model_info
 
-from .predict import NASPredictor
-from .val import NASValidator
-
 
 class NAS(Model):
     """YOLO-NAS model for object detection.
@@ -93,6 +90,11 @@ class NAS(Model):
         return model_info(self.model, detailed=detailed, verbose=verbose, imgsz=imgsz)
 
     @property
-    def task_map(self) -> dict[str, dict[str, Any]]:
+    def _task_map(self) -> dict[str, dict[str, Any]]:
         """Return a dictionary mapping tasks to respective predictor and validator classes."""
-        return {"detect": {"predictor": NASPredictor, "validator": NASValidator}}
+        return {
+            "detect": {
+                "predictor": "ultralytics.models.nas.predict.NASPredictor",
+                "validator": "ultralytics.models.nas.val.NASValidator",
+            }
+        }

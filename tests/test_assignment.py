@@ -1,8 +1,14 @@
 # Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
-"""Assignment regressions runnable without pytest or model downloads."""
+"""Assignment and inference import regressions without pytest or model downloads."""
 
+import os
+import subprocess
+import sys
+import textwrap
 import unittest
 from itertools import permutations
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 import lapcpp
@@ -130,6 +136,147 @@ class TrackingAssignmentTests(unittest.TestCase):
         np.testing.assert_array_equal(legacy_matches, [[0, 0]])
         self.assertEqual(len(unmatched_rows), 0)
         self.assertEqual(len(unmatched_columns), 0)
+
+
+class InferenceImportTests(unittest.TestCase):
+    """Inference and tracking must work when optional training/model modules are unavailable."""
+
+    def run_without_optional_modules(self, code):
+        guard = """
+            import sys
+            from importlib.abc import MetaPathFinder
+
+            def forbidden(name):
+                roots = (
+                    'ultralytics.engine.trainer', 'ultralytics.engine.validator',
+                    'ultralytics.engine.exporter', 'ultralytics.data.base',
+                    'ultralytics.data.dataset', 'ultralytics.utils.loss',
+                    'ultralytics.models.utils.loss', 'ultralytics.models.fastsam',
+                    'ultralytics.models.llm', 'ultralytics.models.rtdetr',
+                    'ultralytics.models.sam',
+                )
+                return (
+                    any(name == root or name.startswith(root + '.') for root in roots)
+                    or (name.startswith('ultralytics.models.')
+                        and name.rsplit('.', 1)[-1] in ('train', 'train_seg', 'train_world', 'val'))
+                )
+
+            class ImportBoundary(MetaPathFinder):
+                def find_spec(self, fullname, path=None, target=None):
+                    if forbidden(fullname):
+                        raise AssertionError('Inference imported optional module: ' + fullname)
+
+            sys.meta_path.insert(0, ImportBoundary())
+        """
+        check = "\nassert not any(forbidden(name) for name in sys.modules)\n"
+        with TemporaryDirectory() as config_dir:
+            env = dict(os.environ, YOLO_AUTOINSTALL="false", YOLO_OFFLINE="true",
+                       YOLO_CONFIG_DIR=config_dir, PYTHONIOENCODING="utf-8")
+            result = subprocess.run(
+                [sys.executable, "-c", textwrap.dedent(guard) + textwrap.dedent(code) + check],
+                cwd=Path(__file__).resolve().parents[1], env=env, capture_output=True,
+                text=True, encoding="utf-8", errors="replace", timeout=60,
+            )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_public_yolo_and_nas_import_without_training_or_other_families(self):
+        self.run_without_optional_modules("""
+            from ultralytics import NAS, YOLO
+            assert YOLO.__name__ == 'YOLO'
+            assert NAS.__name__ == 'NAS'
+        """)
+
+    def test_custom_model_task_maps_control_component_loading(self):
+        self.run_without_optional_modules("""
+            import torch
+            from ultralytics import YOLO
+            from ultralytics.engine.model import Model
+
+            class CustomNetwork:
+                pass
+
+            class CustomPredictor:
+                pass
+
+            for base in (Model, YOLO):
+                class Extension(base):
+                    def __init__(self):
+                        torch.nn.Module.__init__(self)
+                        self.task = 'detect'
+
+                    @property
+                    def task_map(self):
+                        return {'detect': {'model': CustomNetwork, 'predictor': CustomPredictor}}
+
+                extension = Extension()
+                assert extension._smart_load('model') is CustomNetwork
+                assert extension._smart_load('predictor') is CustomPredictor
+        """)
+
+    def test_prediction_embedding_and_model_tracking_do_not_load_training(self):
+        self.run_without_optional_modules("""
+            from pathlib import Path
+            from tempfile import TemporaryDirectory
+            import numpy as np
+            import torch
+            from ultralytics import YOLO
+            from ultralytics.nn.tasks import torch_safe_load
+            from ultralytics.utils import ROOT
+
+            image = np.zeros((64, 64, 3), dtype=np.uint8)
+            for task, filename in (
+                ('detect', 'yolov8.yaml'), ('pose', 'yolov8-pose.yaml'),
+                ('classify', 'yolov8-cls.yaml'),
+            ):
+                model = YOLO(ROOT / 'cfg/models/v8' / filename, verbose=False)
+                with TemporaryDirectory() as checkpoint_dir:
+                    checkpoint = Path(checkpoint_dir) / (task + '.pt')
+                    model.save(checkpoint)
+                    safe_checkpoint, _ = torch_safe_load(checkpoint, safe_only=True)
+                    assert isinstance(safe_checkpoint['model'], type(model.model))
+                    model = YOLO(checkpoint, verbose=False)
+                result, = model.predict(image, imgsz=64, device='cpu', save=False, verbose=False)
+                assert model.task == task and result.orig_shape == image.shape[:2]
+                if task == 'classify':
+                    assert result.probs is not None
+                    embeddings = model.embed(image, imgsz=64, device='cpu', verbose=False)
+                    assert len(embeddings) == 1 and isinstance(embeddings[0], torch.Tensor)
+                else:
+                    assert result.boxes is not None
+                    if task == 'pose':
+                        assert result.keypoints is not None
+                    tracked, = model.track(image, imgsz=64, device='cpu', save=False,
+                                           verbose=False, tracker='bytetrack.yaml', persist=True)
+                    assert tracked.boxes is not None and len(model.predictor.trackers) == 1
+        """)
+
+    def test_all_trackers_and_native_reid_work_without_training_imports(self):
+        self.run_without_optional_modules("""
+            import numpy as np
+            from ultralytics.engine.results import Boxes
+            from ultralytics.trackers.track import TRACKER_MAP
+            from ultralytics.utils import ROOT, YAML, IterableSimpleNamespace
+
+            assert len(TRACKER_MAP) == 6
+            image = np.zeros((80, 120, 3), dtype=np.uint8)
+            features = np.array([[1., 0., 0., 0.]], dtype=np.float32)
+            for name, tracker_type in TRACKER_MAP.items():
+                config = YAML.load(ROOT / 'cfg/trackers' / (name + '.yaml'))
+                config['gmc_method'] = 'none'
+                config['with_reid'] = name in ('botsort', 'deepocsort', 'tracktrack')
+                config['model'] = 'auto'
+                tracker = tracker_type(IterableSimpleNamespace(**config))
+                ids = []
+                for offset in range(3):
+                    data = np.array([[10 + offset, 10, 40 + offset, 60, .95, 0]], dtype=np.float32)
+                    tracks = tracker.update(Boxes(data, image.shape[:2]), img=image, feats=features)
+                    assert len(tracks) == 1, (name, tracks)
+                    ids.append(int(tracks[0, 4]))
+                assert len(set(ids)) == 1, (name, ids)
+                if config['with_reid']:
+                    assert tracker.tracked_stracks[0].smooth_feat is not None
+                tracker.update(Boxes(np.empty((0, 6), dtype=np.float32), image.shape[:2]), img=image)
+        """)
 
 
 if __name__ == "__main__":

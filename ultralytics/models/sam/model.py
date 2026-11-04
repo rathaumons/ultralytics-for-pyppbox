@@ -21,8 +21,6 @@ from pathlib import Path
 from ultralytics.engine.model import Model
 from ultralytics.utils.torch_utils import model_info
 
-from .predict import Predictor, SAM2Predictor, SAM3Predictor
-
 
 class SAM(Model):
     """SAM (Segment Anything Model) interface class for real-time image segmentation tasks.
@@ -152,7 +150,7 @@ class SAM(Model):
         return model_info(self.model, detailed=detailed, verbose=verbose)
 
     @property
-    def task_map(self) -> dict[str, dict[str, type[Predictor]]]:
+    def _task_map(self) -> dict[str, dict[str, str]]:
         """Provide a mapping from the 'segment' task to its corresponding 'Predictor'.
 
         Returns:
@@ -166,6 +164,5 @@ class SAM(Model):
             >>> print(task_map)
             {'segment': {'predictor': <class 'ultralytics.models.sam.predict.Predictor'>}}
         """
-        return {
-            "segment": {"predictor": SAM2Predictor if self.is_sam2 else SAM3Predictor if self.is_sam3 else Predictor}
-        }
+        predictor = "SAM2Predictor" if self.is_sam2 else "SAM3Predictor" if self.is_sam3 else "Predictor"
+        return {"segment": {"predictor": f"ultralytics.models.sam.predict.{predictor}"}}

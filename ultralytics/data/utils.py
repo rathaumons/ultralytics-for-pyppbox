@@ -16,7 +16,6 @@ import cv2
 import numpy as np
 from PIL import Image, ImageOps
 
-from ultralytics.nn.autobackend import check_class_names
 from ultralytics.utils import (
     ASSETS_URL,
     DATASETS_DIR,
@@ -722,6 +721,8 @@ def check_det_dataset(dataset: str | Path, autodownload: bool = True, split: str
     Returns:
         (dict[str, Any]): Parsed dataset information and paths.
     """
+    from ultralytics.nn.autobackend import check_class_names
+
     dataset = str(dataset)
     if "://" not in dataset and not Path(dataset).exists() and Path(dataset).suffix not in {".yaml", ".yml"}:
         # allow bare dataset names, e.g. 'coco8' -> 'coco8.yaml', 'DOTAv1.5' -> 'DOTAv1.5.yaml'

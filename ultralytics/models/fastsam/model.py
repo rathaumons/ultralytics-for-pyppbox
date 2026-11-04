@@ -7,9 +7,6 @@ from typing import Any
 
 from ultralytics.engine.model import Model
 
-from .predict import FastSAMPredictor
-from .val import FastSAMValidator
-
 
 class FastSAM(Model):
     """FastSAM model interface for Segment Anything tasks.
@@ -78,6 +75,11 @@ class FastSAM(Model):
         return super().predict(source, stream, prompts=prompts, **kwargs)
 
     @property
-    def task_map(self) -> dict[str, dict[str, Any]]:
+    def _task_map(self) -> dict[str, dict[str, Any]]:
         """Return a dictionary mapping segment task to corresponding predictor and validator classes."""
-        return {"segment": {"predictor": FastSAMPredictor, "validator": FastSAMValidator}}
+        return {
+            "segment": {
+                "predictor": "ultralytics.models.fastsam.predict.FastSAMPredictor",
+                "validator": "ultralytics.models.fastsam.val.FastSAMValidator",
+            }
+        }

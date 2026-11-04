@@ -1,22 +1,48 @@
 # Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
-from .predict import YOLOEVPDetectPredictor, YOLOEVPSegPredictor
-from .train import YOLOEPEFreeTrainer, YOLOEPETrainer, YOLOETrainer, YOLOETrainerFromScratch, YOLOEVPTrainer
-from .train_seg import YOLOEPESegTrainer, YOLOESegTrainer, YOLOESegTrainerFromScratch, YOLOESegVPTrainer
-from .val import YOLOEDetectValidator, YOLOESegValidator
+from importlib import import_module
+from typing import TYPE_CHECKING
 
-__all__ = [
-    "YOLOEDetectValidator",
-    "YOLOEPEFreeTrainer",
-    "YOLOEPESegTrainer",
-    "YOLOEPETrainer",
-    "YOLOESegTrainer",
-    "YOLOESegTrainerFromScratch",
-    "YOLOESegVPTrainer",
-    "YOLOESegValidator",
-    "YOLOETrainer",
-    "YOLOETrainerFromScratch",
-    "YOLOEVPDetectPredictor",
-    "YOLOEVPSegPredictor",
-    "YOLOEVPTrainer",
-]
+if TYPE_CHECKING:
+    from .val import YOLOEDetectValidator, YOLOESegValidator  # noqa: F401
+    from .train import YOLOEPEFreeTrainer, YOLOEPETrainer, YOLOETrainer, YOLOETrainerFromScratch, YOLOEVPTrainer  # noqa: F401
+    from .train_seg import YOLOEPESegTrainer, YOLOESegTrainer, YOLOESegTrainerFromScratch, YOLOESegVPTrainer  # noqa: F401
+    from .predict import YOLOEVPDetectPredictor, YOLOEVPSegPredictor  # noqa: F401
+
+_EXPORTS = {
+    "YOLOEDetectValidator": "val",
+    "YOLOEPEFreeTrainer": "train",
+    "YOLOEPESegTrainer": "train_seg",
+    "YOLOEPETrainer": "train",
+    "YOLOESegTrainer": "train_seg",
+    "YOLOESegTrainerFromScratch": "train_seg",
+    "YOLOESegVPTrainer": "train_seg",
+    "YOLOESegValidator": "val",
+    "YOLOETrainer": "train",
+    "YOLOETrainerFromScratch": "train",
+    "YOLOEVPDetectPredictor": "predict",
+    "YOLOEVPSegPredictor": "predict",
+    "YOLOEVPTrainer": "train",
+}
+
+__all__ = tuple(_EXPORTS)
+
+
+def __getattr__(name):
+    """Import public models and task components only when requested."""
+    if name in _EXPORTS:
+        module = _EXPORTS[name]
+        value = import_module(f"{__name__}.{module or name}")
+        if module is not None:
+            value = getattr(value, name)
+    elif name in _EXPORTS.values():
+        value = import_module(f"{__name__}.{name}")
+    else:
+        raise AttributeError(f"module {__name__} has no attribute {name}")
+    globals()[name] = value
+    return value
+
+
+def __dir__():
+    """Include lazy public exports in interactive completion."""
+    return sorted(set(globals()) | set(__all__) | {module for module in _EXPORTS.values() if module})

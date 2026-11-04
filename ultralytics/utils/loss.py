@@ -1542,3 +1542,7 @@ class SemanticSegmentationLoss(nn.Module):
 
         loss_items = {"ce_loss": ce_loss.detach(), "dice_loss": dice_loss.detach(), "aux_loss": aux_loss.detach()}
         return total * preds.shape[0], loss_items
+
+
+# Older YOLOv10 checkpoints serialize the criterion under this class name.
+v10DetectLoss = E2EDetectLoss

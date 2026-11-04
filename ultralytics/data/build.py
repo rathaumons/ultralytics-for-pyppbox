@@ -18,14 +18,6 @@ from PIL import Image
 from torch.utils.data import Dataset, dataloader, distributed
 
 from ultralytics.cfg import IterableSimpleNamespace
-from ultralytics.data.dataset import (
-    DepthDataset,
-    GroundingDataset,
-    PolygonSemanticDataset,
-    SemanticDataset,
-    YOLODataset,
-    YOLOMultiModalDataset,
-)
 from ultralytics.data.loaders import (
     LOADERS,
     LoadImagesAndVideos,
@@ -36,7 +28,7 @@ from ultralytics.data.loaders import (
     SourceTypes,
     autocast_list,
 )
-from ultralytics.data.utils import IMG_FORMATS, VID_FORMATS, add_polygon_background, get_split_fraction
+from ultralytics.data.utils import IMG_FORMATS, VID_FORMATS
 from ultralytics.utils import RANK, REQUEST_HEADERS, colorstr
 from ultralytics.utils.checks import check_file
 from ultralytics.utils.torch_utils import TORCH_1_13, TORCH_2_0, TORCH_2_7, get_torch_device_backend
@@ -264,6 +256,15 @@ def build_yolo_dataset(
         (Dataset): A DepthDataset, SemanticDataset, PolygonSemanticDataset, YOLOMultiModalDataset, or YOLODataset
             depending on cfg.task, the dataset configuration, and multi_modal.
     """
+    from ultralytics.data.dataset import (
+        DepthDataset,
+        PolygonSemanticDataset,
+        SemanticDataset,
+        YOLODataset,
+        YOLOMultiModalDataset,
+    )
+    from ultralytics.data.utils import add_polygon_background, get_split_fraction
+
     pad = 0.0 if mode == "train" else 0.5
     rect = cfg.rect or rect
     if cfg.task == "depth":
@@ -327,6 +328,8 @@ def build_grounding(
     Returns:
         (Dataset): The GroundingDataset instance.
     """
+    from ultralytics.data.dataset import GroundingDataset
+
     return GroundingDataset(
         img_path=img_path,
         json_file=json_file,

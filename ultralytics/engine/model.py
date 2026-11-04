@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 import inspect
 from collections.abc import Iterator
+from importlib import import_module
 from pathlib import Path
 from typing import Any
 
@@ -1205,11 +1206,26 @@ class Model(torch.nn.Module):
             >>> trainer_class = model._smart_load("trainer")
         """
         try:
-            return self.task_map[self.task][key]
+            # Honor public task_map overrides on custom Model subclasses, including YOLO extensions.
+            task_map = self._task_map if type(self).task_map is Model.task_map else self.task_map
+            return self._load_task_component(task_map[self.task][key])
         except Exception as e:
             name = self.__class__.__name__
             mode = inspect.stack()[1][3]  # get the function name.
             raise NotImplementedError(f"'{name}' model does not support '{mode}' mode for '{self.task}' task.") from e
+
+    @property
+    def _task_map(self) -> dict:
+        """Map tasks to classes or dotted import targets without importing unused components."""
+        raise NotImplementedError("Please provide task map for your model!")
+
+    @staticmethod
+    def _load_task_component(component):
+        """Resolve one lazy task component, leaving existing class objects unchanged."""
+        if isinstance(component, str):
+            module, name = component.rsplit(".", 1)
+            return getattr(import_module(module), name)
+        return component
 
     @property
     def task_map(self) -> dict:
@@ -1234,7 +1250,10 @@ class Model(torch.nn.Module):
             >>> detect_predictor = task_map["detect"]["predictor"]
             >>> segment_trainer = task_map["segment"]["trainer"]
         """
-        raise NotImplementedError("Please provide task map for your model!")
+        return {
+            task: {key: self._load_task_component(component) for key, component in components.items()}
+            for task, components in self._task_map.items()
+        }
 
     def eval(self):
         """Set the model to evaluation mode.

@@ -16,10 +16,6 @@ from ultralytics.engine.model import Model
 from ultralytics.nn.tasks import RTDETRDetectionModel
 from ultralytics.utils.torch_utils import TORCH_1_11
 
-from .predict import RTDETRPredictor
-from .train import RTDETRTrainer
-from .val import RTDETRValidator
-
 
 class RTDETR(Model):
     """Interface for Baidu's RT-DETR model, a Vision Transformer-based real-time object detector.
@@ -51,7 +47,7 @@ class RTDETR(Model):
         super().__init__(model=model, task="detect")
 
     @property
-    def task_map(self) -> dict:
+    def _task_map(self) -> dict:
         """Return a task map for RT-DETR, associating tasks with corresponding Ultralytics classes.
 
         Returns:
@@ -59,9 +55,9 @@ class RTDETR(Model):
         """
         return {
             "detect": {
-                "predictor": RTDETRPredictor,
-                "validator": RTDETRValidator,
-                "trainer": RTDETRTrainer,
+                "predictor": "ultralytics.models.rtdetr.predict.RTDETRPredictor",
+                "validator": "ultralytics.models.rtdetr.val.RTDETRValidator",
+                "trainer": "ultralytics.models.rtdetr.train.RTDETRTrainer",
                 "model": RTDETRDetectionModel,
             }
         }
