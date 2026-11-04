@@ -1,27 +1,19 @@
 # Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
+import lapcpp
 import numpy as np
 
 from ultralytics.utils.metrics import batch_probiou, bbox_ioa
 
-try:
-    import lapcpp  # for linear_assignment
-except ImportError:
-    from ultralytics.utils.checks import check_requirements
-
-    if check_requirements("lapcpp>=1.2.0"):
-        import lapcpp
-    else:
-        lapcpp = None
-
 
 def linear_assignment(cost_matrix: np.ndarray, thresh: float, use_lap: bool = True):
-    """Perform linear assignment using either lapcpp.lapjv or `ultralytics.utils.ops.linear_sum_assignment`.
+    """Perform linear assignment using lapcpp, with optional joint rejection of unmatched rows and columns.
 
     Args:
         cost_matrix (np.ndarray): The matrix containing cost values for assignments, with shape (N, M).
         thresh (float): Threshold for considering an assignment valid.
-        use_lap (bool): Use lapcpp.lapjv if available. If False or unavailable, ops.linear_sum_assignment is used.
+        use_lap (bool): Optimize rejection jointly using cost_limit. If False, solve capped costs using lapcpp via
+            ops.linear_sum_assignment, then discard pairs above thresh.
 
     Returns:
         matched_indices (list[list[int]] | np.ndarray): Matched indices of shape (K, 2), where K is the number of
@@ -37,7 +29,7 @@ def linear_assignment(cost_matrix: np.ndarray, thresh: float, use_lap: bool = Tr
     if cost_matrix.size == 0:
         return np.empty((0, 2), dtype=int), tuple(range(cost_matrix.shape[0])), tuple(range(cost_matrix.shape[1]))
 
-    if use_lap and lapcpp is not None:
+    if use_lap:
         matches = lapcpp.lapjv(cost_matrix, extend_cost=True, cost_limit=thresh, return_cost=False, output="pairs")
     else:
         from ultralytics.utils.ops import linear_sum_assignment
